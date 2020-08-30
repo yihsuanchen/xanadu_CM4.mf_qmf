@@ -875,7 +875,9 @@ call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm,  ' after_dyn')
           !      ---- SERIAL atmosphere radiation ----
           if (.not.do_concurrent_radiation) then
             call mpp_clock_begin(newClockj)
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_rad' )
             call update_atmos_model_radiation( Land_ice_atmos_boundary, Atm )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_rad' )
             call mpp_clock_end(newClockj)
           endif
           if (do_chksum) call atmos_ice_land_chksum('update_atmos_model_radiation(ser)', (nc-1)*num_atmos_calls+na, &
@@ -885,7 +887,9 @@ call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm,  ' after_dyn')
           !      ---- atmosphere down ----
           if (do_atmos) then
             call mpp_clock_begin(newClockc)
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_dwn' )
             call update_atmos_model_down( Land_ice_atmos_boundary, Atm )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_dwn' )
             call mpp_clock_end(newClockc)
           endif
           if (do_chksum) call atmos_ice_land_chksum('update_atmos_down+', (nc-1)*num_atmos_calls+na, Atm, Land, Ice, &
