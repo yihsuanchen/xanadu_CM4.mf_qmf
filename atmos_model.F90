@@ -1546,7 +1546,7 @@ end subroutine ice_atm_bnd_type_chksum
 
 !<--- yihsuan add, to get atmospheric variables 
 !subroutine update_atmos_model_down( Surface_boundary, Atmos )
-subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos )
+subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
 !
 !-----------------------------------------------------------------------
   type(land_ice_atmos_boundary_type), intent(inout) :: Surface_boundary
@@ -1561,10 +1561,11 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos )
     integer :: blk, ibs, ibe, jbs, jbe
     logical, save :: message = .true.
 
-    integer ii,jj,kk
+    character(len=10) string00
+    integer ii,jj,kk,nblk
 !-----------------------------------------------------------------------
     call set_atmosphere_pelist()
-    call mpp_clock_begin(atmClock)
+    !call mpp_clock_begin(atmClock)
 
     call atmos_physics_driver_inputs (Physics, Atm_block, Physics_tendency)
 
@@ -1605,18 +1606,37 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos )
        js = jsw-jsc+1
        je = jew-jsc+1
 
+       !--- test column
+       !      yhc11, blk           1
+       !      yhc11, isw,iew,jsw,jew          33          64          57          64
+       !      yhc11, ii,jj          42          58
+       nblk=1
+       ii=42
+       jj=58
+       isw=ii
+       iew=ii
+       jsw=jj
+       jew=jj
+
+!Physics%block(blk)
+!Physics_tendency%block(blk)
+
        do ii=isw,iew
        do jj=jsw,jew
          if (Surface_boundary%b_star(ii,jj).gt.0.1190E-01 .and. &
              Surface_boundary%b_star(ii,jj).lt.0.1200E-01) then
            write(6,*) '--------------------------'
+           write(6,*) 'yhc11, string00',string00
            write(6,*) 'yhc11, blk',blk
            write(6,*) 'yhc11, isw,iew,jsw,jew',isw,iew,jsw,jew
            write(6,*) 'yhc11, ii,jj',ii,jj
            write(6,*) 'yhc11, Surface_boundary%u_star(ii,jj)',Surface_boundary%u_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%b_star(ii,jj)',Surface_boundary%b_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%q_star(ii,jj)',Surface_boundary%q_star(ii,jj)
-           !write(6,*) 'yhc11, ',
+           write(6,3001) 'yhc11, Physics%block(blk)%t(ii,jj,:)',Physics%block(blk)%t(ii,jj,:)
+           write(6,3002) 'yhc11, Physics%block(blk)%q(ii,jj,:)',Physics%block(blk)%q(ii,jj,:,1)
+           write(6,3002) 'yhc11, Physics_tendency%block(blk)%t_dt(ii,jj,:)',Physics_tendency%block(blk)%t_dt(ii,jj,:)
+           write(6,3002) 'yhc11, Physics_tendency%block(blk)%q_dt(ii,jj,:,1)',Physics_tendency%block(blk)%q_dt(ii,jj,:,1)
            !write(6,*) 'yhc11, ',
            !write(6,*) 'yhc11, ',
            write(6,*) '--------------------------'
@@ -1652,11 +1672,11 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos )
 !                                  Rad_flux(1)%block(blk) )
     enddo
 
-3000 format (A35,2X,F8.2,',')
-3001 format (A35,2X,34(F10.3,2X,','))
-3002 format (A35,2X,34(E12.4,2X,','))
-3003 format (A35,2X,E12.4,',')
-3004 format (A35,2X,33(F10.3,2X,','),A5)
+3000 format (A95,2X,F8.2,',')
+3001 format (A95,2X,34(F10.3,2X,','))
+3002 format (A95,2X,34(E12.4,2X,','))
+3003 format (A95,2X,E12.4,',')
+3004 format (A95,2X,33(F10.3,2X,','),A5)
 
  end subroutine yhc_get_atmos_model_fields
 !<--- yihsuan add end
