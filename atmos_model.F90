@@ -1562,7 +1562,7 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
     logical, save :: message = .true.
 
     character(len=10) string00
-    integer ii,jj,kk,nblk
+    integer ii,jj,kk,nblk,iphy,jphy
 !-----------------------------------------------------------------------
     call set_atmosphere_pelist()
     !call mpp_clock_begin(atmClock)
@@ -1618,6 +1618,8 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
        jsw=jj
        jew=jj
 
+       iphy = 10  ! index in physics_driver
+       jphy = 2
 !Physics%block(blk)
 !Physics_tendency%block(blk)
 
@@ -1626,17 +1628,18 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
          if (Surface_boundary%b_star(ii,jj).gt.0.1190E-01 .and. &
              Surface_boundary%b_star(ii,jj).lt.0.1200E-01) then
            write(6,*) '--------------------------'
-           write(6,*) 'yhc11, string00',string00
+           write(6,*) 'yhc11, string00, ',string00
            write(6,*) 'yhc11, blk',blk
            write(6,*) 'yhc11, isw,iew,jsw,jew',isw,iew,jsw,jew
            write(6,*) 'yhc11, ii,jj',ii,jj
            write(6,*) 'yhc11, Surface_boundary%u_star(ii,jj)',Surface_boundary%u_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%b_star(ii,jj)',Surface_boundary%b_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%q_star(ii,jj)',Surface_boundary%q_star(ii,jj)
-           write(6,3001) 'yhc11, Physics%block(blk)%t(ii,jj,:)',Physics%block(blk)%t(ii,jj,:)
-           write(6,3002) 'yhc11, Physics%block(blk)%q(ii,jj,:)',Physics%block(blk)%q(ii,jj,:,1)
-           write(6,3002) 'yhc11, Physics_tendency%block(blk)%t_dt(ii,jj,:)',Physics_tendency%block(blk)%t_dt(ii,jj,:)
-           write(6,3002) 'yhc11, Physics_tendency%block(blk)%q_dt(ii,jj,:,1)',Physics_tendency%block(blk)%q_dt(ii,jj,:,1)
+           write(6,3001) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)',Physics%block(blk)%t(iphy,jphy,:)
+           write(6,3002) 'yhc11, Physics%block(blk)%q(iphy,jphy,:)',Physics%block(blk)%q(iphy,jphy,:,1)
+           write(6,3002) 'yhc11, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)',Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
+           write(6,3002) 'yhc11, Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)',Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)
+           write(6,*) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)',Physics%block(blk)%t(iphy,jphy,:)
            !write(6,*) 'yhc11, ',
            !write(6,*) 'yhc11, ',
            write(6,*) '--------------------------'
