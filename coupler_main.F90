@@ -858,9 +858,14 @@ program coupler_main
           if (do_atmos) then
             call mpp_clock_begin(newClockl)
 
-call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm )
-
+!write( text,'(a)' ) 'before update_atmos_model_dynamics'
+    !write( text,'(a,i6)' )'Main loop at coupling timestep=', nc
+!    write( text,'(a,i6)' )'before update_atmos_model_dynamics', nc
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_dyn' )
             call update_atmos_model_dynamics( Atm )
+
+!write( text,'(a)' ) 'after update_atmos_model_dynamics'
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm,  ' after_dyn')
             call mpp_clock_end(newClockl)
           endif
           if (do_chksum) call atmos_ice_land_chksum('update_atmos_model_dynamics', (nc-1)*num_atmos_calls+na, &
