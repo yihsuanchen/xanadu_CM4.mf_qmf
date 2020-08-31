@@ -41,6 +41,9 @@ fi
 # set sbatch log file path
 sbatch_log="${sbatch_script}.o*"
 
+#echo $sbatch_log
+log_latest=`echo $sbatch_log | awk '{print $NF}'`
+
 # check with user
 echo ""
 echo "sbatch script: [$sbatch_script]"
@@ -51,7 +54,15 @@ if [ ! "$choice1" == "y" ]; then
   echo ""
   echo "view sbatch log files:"
   echo ""
-  ls -l $sbatch_log
+  #ls -l $sbatch_log
+  echo "-------------- tail of the log file"
+  tail $log_latest
+  echo "--------------"
+  echo ""
+  ls -l $log_latest
+  name1=`echo $log_latest | awk '{print $NF}'`
+  echo ""
+  echo $name1
   echo ""
   exit 0
 fi
