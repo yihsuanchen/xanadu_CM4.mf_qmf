@@ -1562,6 +1562,9 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
     logical, save :: message = .true.
 
     character(len=10) string00
+    character(len=35) ::   & 
+      data_string_t, data_string_q, &
+      data_string_tdt, data_string_qdt
     integer ii,jj,kk,nblk,iphy,jphy
 !-----------------------------------------------------------------------
     call set_atmosphere_pelist()
@@ -1593,6 +1596,76 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
     jec = Atm_block%jec
     npz = Atm_block%npz
 
+!--- set data string
+  if (string00 .eq. 'before_dyn') then
+    data_string_t   = 'data t_before_dyn/'
+    data_string_q   = 'data q_before_dyn/'
+    data_string_tdt = 'data tdt_before_dyn/'
+    data_string_qdt = 'data qdt_before_dyn/'
+
+  elseif (string00 .eq. ' after_dyn') then
+    data_string_t   = 'data t_after_dyn/'
+    data_string_q   = 'data q_after_dyn/'
+    data_string_tdt = 'data tdt_after_dyn/'
+    data_string_qdt = 'data qdt_after_dyn/'
+
+  else if (string00 .eq. 'before_rad') then
+    data_string_t   = 'data t_before_rad/'
+    data_string_q   = 'data q_before_rad/'
+    data_string_tdt = 'data tdt_before_rad/'
+    data_string_qdt = 'data qdt_before_rad/'
+
+  elseif (string00 .eq. ' after_rad') then
+    data_string_t   = 'data t_after_rad/'
+    data_string_q   = 'data q_after_rad/'
+    data_string_tdt = 'data tdt_after_rad/'
+    data_string_qdt = 'data qdt_after_rad/'
+
+!-----
+  else if (string00 .eq. 'before_dwn') then
+    data_string_t   = 'data t_before_update_down/'
+    data_string_q   = 'data q_before_update_down/'
+    data_string_tdt = 'data tdt_before_update_down/'
+    data_string_qdt = 'data qdt_before_update_down/'
+
+  elseif (string00 .eq. ' after_dwn') then
+    data_string_t   = 'data t_after_update_down/'
+    data_string_q   = 'data q_after_update_down/'
+    data_string_tdt = 'data tdt_after_update_down/'
+    data_string_qdt = 'data qdt_after_update_down/'
+
+  else if (string00 .eq. 'before_up ') then
+    data_string_t   = 'data t_before_update_up /'
+    data_string_q   = 'data q_before_update_up /'
+    data_string_tdt = 'data tdt_before_update_up /'
+    data_string_qdt = 'data qdt_before_update_up /'
+
+  elseif (string00 .eq. ' after_up ') then
+    data_string_t   = 'data t_after_update_up /'
+    data_string_q   = 'data q_after_update_up /'
+    data_string_tdt = 'data tdt_after_update_up /'
+    data_string_qdt = 'data qdt_after_update_up /'
+
+  else if (string00 .eq. 'before_sta') then
+    data_string_t   = 'data t_before_update_state/'
+    data_string_q   = 'data q_before_update_state/'
+    data_string_tdt = 'data tdt_before_update_state/'
+    data_string_qdt = 'data qdt_before_update_state/'
+
+  elseif (string00 .eq. ' after_sta') then
+    data_string_t   = 'data t_after_update_state/'
+    data_string_q   = 'data q_after_update_state/'
+    data_string_tdt = 'data tdt_after_update_state/'
+    data_string_qdt = 'data qdt_after_update_state/'
+
+  else
+    data_string_t   = 'data t_unknown_where/'
+    data_string_q   = 'data q_unknown_where/'
+    data_string_tdt = 'data tdt_unknown_where/'
+    data_string_qdt = 'data qdt_unknown_where/'
+
+  endif
+
 !$OMP parallel do default(shared) private(blk, isw, iew, jsw, jew, is, ie, js, je)
     do blk = 1,nxblocks*nyblocks
        isw = Atm_block%ibs(blk)
@@ -1617,11 +1690,11 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
        iew=ii
        jsw=jj
        jew=jj
-
        iphy = 10  ! index in physics_driver
        jphy = 2
-!Physics%block(blk)
-!Physics_tendency%block(blk)
+
+                               !Atmos%lat (is:ie,js:je),   &
+                               ! Atmos%lon (is:ie,js:je),   &
 
        do ii=isw,iew
        do jj=jsw,jew
@@ -1632,14 +1705,23 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
            write(6,*) 'yhc11, blk',blk
            write(6,*) 'yhc11, isw,iew,jsw,jew',isw,iew,jsw,jew
            write(6,*) 'yhc11, ii,jj',ii,jj
+           write(6,*) 'yhc11, iphy,jphy',iphy,jphy
+           write(6,*) 'yhc11, lat', Atmos%lat (iphy,jphy),' (radian)', Atmos%lat (iphy,jphy)/3.1415 * 180.,' degree_N'
+           write(6,*) 'yhc11, lon', Atmos%lon (iphy,jphy),' (radian)', Atmos%lon (iphy,jphy)/3.1415 * 180.,' degree_E' 
            write(6,*) 'yhc11, Surface_boundary%u_star(ii,jj)',Surface_boundary%u_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%b_star(ii,jj)',Surface_boundary%b_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%q_star(ii,jj)',Surface_boundary%q_star(ii,jj)
-           write(6,3001) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)',Physics%block(blk)%t(iphy,jphy,:)
-           write(6,3002) 'yhc11, Physics%block(blk)%q(iphy,jphy,:)',Physics%block(blk)%q(iphy,jphy,:,1)
-           write(6,3002) 'yhc11, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)',Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
-           write(6,3002) 'yhc11, Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)',Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)
-           write(6,*) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)',Physics%block(blk)%t(iphy,jphy,:)
+           write(6,3001) data_string_t,   Physics%block(blk)%t(iphy,jphy,:)
+           write(6,3002) data_string_q,   Physics%block(blk)%q(iphy,jphy,:,1)
+           write(6,3002) data_string_tdt, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
+           write(6,3002) data_string_qdt, Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)
+
+           !write(6,3001) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)',Physics%block(blk)%t(iphy,jphy,:)
+           !write(6,3002) 'yhc11, Physics%block(blk)%q(iphy,jphy,:)',Physics%block(blk)%q(iphy,jphy,:,1)
+           !write(6,3002) 'yhc11, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)',Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
+           !write(6,3002) 'yhc11, Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)',Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)
+           !write(6,*) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)',Physics%block(blk)%t(iphy,jphy,:)
+
            !write(6,*) 'yhc11, ',
            !write(6,*) 'yhc11, ',
            write(6,*) '--------------------------'
@@ -1675,11 +1757,11 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
 !                                  Rad_flux(1)%block(blk) )
     enddo
 
-3000 format (A95,2X,F8.2,',')
-3001 format (A95,2X,34(F10.3,2X,','))
-3002 format (A95,2X,34(E12.4,2X,','))
-3003 format (A95,2X,E12.4,',')
-3004 format (A95,2X,33(F10.3,2X,','),A5)
+3000 format (A35,2X,F8.2,',')
+3001 format (A35,2X,34(F10.3,2X,','))
+3002 format (A35,2X,34(E12.4,2X,','))
+3003 format (A35,2X,E12.4,',')
+3004 format (A35,2X,33(F10.3,2X,','),A5)
 
  end subroutine yhc_get_atmos_model_fields
 !<--- yihsuan add end
