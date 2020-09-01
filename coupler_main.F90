@@ -845,11 +845,11 @@ program coupler_main
 
 !yihsuan
 !<--- flag11
-3000 format (A35,2X,F8.2,',')
-3001 format (A35,2X,34(F10.3,2X,','))
-3002 format (A35,2X,34(E12.4,2X,','))
-3003 format (A35,2X,E12.4,',')
-3004 format (A35,2X,33(F10.3,2X,','),A5)
+!3000 format (A35,2X,F8.2,',')
+!3001 format (A35,2X,34(F10.3,2X,','))
+!3002 format (A35,2X,34(E12.4,2X,','))
+!3003 format (A35,2X,E12.4,',')
+!3004 format (A35,2X,33(F10.3,2X,','),A5)
 !<--- flag11
 
           if (do_concurrent_radiation) call mpp_clock_begin(newClocki)
@@ -858,9 +858,6 @@ program coupler_main
           if (do_atmos) then
             call mpp_clock_begin(newClockl)
 
-!write( text,'(a)' ) 'before update_atmos_model_dynamics'
-    !write( text,'(a,i6)' )'Main loop at coupling timestep=', nc
-!    write( text,'(a,i6)' )'before update_atmos_model_dynamics', nc
 call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_dyn' )
             call update_atmos_model_dynamics( Atm )
 
@@ -941,7 +938,9 @@ call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_dwn' )
 
           call mpp_clock_begin(newClockh)
           if (do_atmos) &
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_up ' )
             call update_atmos_model_up( Land_ice_atmos_boundary, Atm)
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_up ' )
           call mpp_clock_end(newClockh)
           if (do_chksum) call atmos_ice_land_chksum('update_atmos_up+', (nc-1)*num_atmos_calls+na, Atm, Land, Ice, &
                  Land_ice_atmos_boundary, Atmos_ice_boundary, Atmos_land_boundary)
@@ -987,7 +986,9 @@ call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_dwn' )
 !$      call omp_set_num_threads(atmos_nthreads+(conc_nthreads-1)*radiation_nthreads)
 
         call mpp_clock_begin(newClockk)
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_sta' )
         call update_atmos_model_state( Atm )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_sta' )
         if (do_chksum) call atmos_ice_land_chksum('update_atmos_model_state+', (nc-1)*num_atmos_calls+na, Atm, Land, &
                   Ice,Land_ice_atmos_boundary, Atmos_ice_boundary, Atmos_land_boundary)
         if (do_debug)  call print_memuse_stats( 'update state')
