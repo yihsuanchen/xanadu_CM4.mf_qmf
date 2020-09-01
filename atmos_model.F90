@@ -1570,14 +1570,11 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
     call set_atmosphere_pelist()
     !call mpp_clock_begin(atmClock)
 
-    call atmos_physics_driver_inputs (Physics, Atm_block, Physics_tendency)
-
-!--- update heat tendency for serial radiation ---
-    if (.not. do_concurrent_radiation) then
-      do blk = 1,Atm_block%nblks
-        Physics_tendency%block(blk)%t_dt = Physics_tendency%block(blk)%t_dt + Rad_flux(1)%block(blk)%tdt_rad
-      enddo
-    endif
+    !--- atmos_physics_driver_inputs is called once.
+    !      This is called in update_atmos_model_down, but not in update_atmos_model_up
+    !if (string00.eq."before_dyn") then
+    !  call atmos_physics_driver_inputs (Physics, Atm_block, Physics_tendency)
+    !endif
 
 !---------------------------------------------------------------------
 ! call physics_driver_down_time_vary to do the time-dependent, spatially
@@ -1587,7 +1584,7 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
     Time_next = Atmos%Time + Atmos%Time_step
     call get_time (Time_next-Time_prev, sec, day)
     dt = real(sec+day*86400)
-    call physics_driver_down_time_vary (Atmos%Time, Time_next, dt)
+!    call physics_driver_down_time_vary (Atmos%Time, Time_next, dt)
 
 !--- indices for domain-based arrays
     isc = Atm_block%isc
@@ -1600,33 +1597,33 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
   if (string00 .eq. 'before_dyn') then
     data_string_t   = 'data t_before_dyn/'
     data_string_q   = 'data q_before_dyn/'
-    data_string_tdt = 'data tdt_before_dyn/'
-    data_string_qdt = 'data qdt_before_dyn/'
+    data_string_tdt = 'data tdt_ZEROS_before_dyn/'
+    data_string_qdt = 'data qdt_ZEROS_before_dyn/'
 
   elseif (string00 .eq. ' after_dyn') then
     data_string_t   = 'data t_after_dyn/'
     data_string_q   = 'data q_after_dyn/'
-    data_string_tdt = 'data tdt_after_dyn/'
-    data_string_qdt = 'data qdt_after_dyn/'
+    data_string_tdt = 'data tdt_ZEROS_after_dyn/'
+    data_string_qdt = 'data qdt_ZEROS_after_dyn/'
 
   else if (string00 .eq. 'before_rad') then
     data_string_t   = 'data t_before_rad/'
     data_string_q   = 'data q_before_rad/'
-    data_string_tdt = 'data tdt_before_rad/'
-    data_string_qdt = 'data qdt_before_rad/'
+    data_string_tdt = 'data tdt_ZEROS_before_rad/'
+    data_string_qdt = 'data qdt_ZEROS_before_rad/'
 
   elseif (string00 .eq. ' after_rad') then
     data_string_t   = 'data t_after_rad/'
     data_string_q   = 'data q_after_rad/'
-    data_string_tdt = 'data tdt_after_rad/'
-    data_string_qdt = 'data qdt_after_rad/'
+    data_string_tdt = 'data tdt_ZEROS_after_rad/'
+    data_string_qdt = 'data qdt_ZEROS_after_rad/'
 
 !-----
   else if (string00 .eq. 'before_dwn') then
     data_string_t   = 'data t_before_update_down/'
     data_string_q   = 'data q_before_update_down/'
-    data_string_tdt = 'data tdt_before_update_down/'
-    data_string_qdt = 'data qdt_before_update_down/'
+    data_string_tdt = 'data tdt_ZEROS_before_update_down/'
+    data_string_qdt = 'data qdt_ZEROS_before_update_down/'
 
   elseif (string00 .eq. ' after_dwn') then
     data_string_t   = 'data t_after_update_down/'
@@ -1762,6 +1759,8 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
 3002 format (A35,2X,34(E12.4,2X,','))
 3003 format (A35,2X,E12.4,',')
 3004 format (A35,2X,33(F10.3,2X,','),A5)
+
+  call mpp_set_current_pelist(Atmos%pelist, no_sync=.TRUE.)
 
  end subroutine yhc_get_atmos_model_fields
 !<--- yihsuan add end
