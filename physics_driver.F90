@@ -161,6 +161,11 @@ use grey_radiation_mod,       only: grey_radiation_init, grey_radiation, &
 
 use monin_obukhov_mod,        only: monin_obukhov_init
 
+!<-- yihsuan
+use     constants_mod, only: rdgas, rvgas, kappa, grav, &
+                             cp_air, dens_h2o, hlv, hlf
+!--> yihsuan
+
 #ifdef SCM
 ! Option to add SCM radiative tendencies from forcing to lw_tendency
 ! and radturbten
@@ -378,6 +383,7 @@ real    :: cosp_frequency = 10800.
 logical :: do_mass_flux_diagnostic   = .false.
 logical :: do_mass_flux_before_vdiff = .false.
 logical :: do_mass_flux_after_vdiff  = .false.
+logical :: do_stop_run               = .false.
 !--> yi-hsuan 
 
 namelist / physics_driver_nml / do_radiation, do_clubb,  do_cosp, &
@@ -390,7 +396,7 @@ namelist / physics_driver_nml / do_radiation, do_clubb,  do_cosp, &
                                 qmin, N_land, N_ocean, do_liq_num,  &
                                 do_ice_num, qcvar, overlap, N_min, &
                                 min_diam_ice, dcs, min_diam_drop, &
-                                do_mass_flux_diagnostic, do_mass_flux_before_vdiff, do_mass_flux_after_vdiff, &  ! yi-hsuan add
+                                do_stop_run, do_mass_flux_diagnostic, do_mass_flux_before_vdiff, do_mass_flux_after_vdiff, &  ! yi-hsuan add
                                 max_diam_drop, use_tau, cosp_frequency
 
 
@@ -564,6 +570,9 @@ type(precip_flux_type)              :: Precip_flux
 
 !<-- yi-hsuan debug, 2020-07-02
 integer :: id_tdt_before_mf, id_tdt_after_mf, id_tdt_after_vdiff_down, id_tdt_after_vdiff_up, id_diff_t_smooth, id_diff_m_smooth, id_diff_t_vert, id_diff_m_vert
+logical :: do_writeout_column
+real :: lat_lower, lat_upper, lon_lower, lon_upper
+integer :: ii_write, jj_write
 !--> yi-hsuan debug, 2020-07-02
 
                             contains
@@ -1937,19 +1946,34 @@ real,  dimension(:,:,:), intent(out)  ,optional :: diffm, difft
 
     !write(6,*) 'ooo1, physics_down, shflx',shflx
     !write(6,*) 'ooo1, physics_up  , lhflx',lhflx
+  do_writeout_column = .false.
 
-  i=10
-  j=2
-  if (b_star(i,j).gt.0.1190E-01 .and. b_star(i,j).lt.0.1200E-01) then
-        write(6,*) '-------------- i,j,',i,j
-    write(6,*) 'b_star',b_star(i,j)
-    write(6,*) 'u_star',u_star(i,j)
-    write(6,*) 'q_star',q_star(i,j)
-        write(6,3001) 'data t_physics_down_begin/'    ,t(i,j,:)
-        write(6,3002) 'data q_physics_down_begin/'    ,r(i,j,:,1)
-        write(6,3002) 'data tdt_physics_down_begin/'    ,tdt(i,j,:)
-        write(6,3002) 'data qdt_physics_down_begin/'    ,rdt(i,j,:,1)
-       write(6,*) '-------------- i,j,',i,j
+  !--- set criteria
+  ii_write=10
+  jj_write=2
+  lat_lower = 1.364  ! radian
+  lat_upper = 1.365
+  lon_lower = 5.136  ! radian
+  lon_upper = 5.137
+
+  if (b_star(ii_write,jj_write).gt.0.1190E-01 .and. b_star(ii_write,jj_write).lt.0.1200E-01) then
+    do_writeout_column = .true.   
+  end if
+  if (lat (ii_write,jj_write).gt.lat_lower .and. lat (ii_write,jj_write).lt.lat_upper .and. &
+      lon (ii_write,jj_write).gt.lon_lower .and. lon (ii_write,jj_write).lt.lon_upper ) then
+    do_writeout_column = .true.
+  endif
+
+  if (do_writeout_column) then
+        write(6,*) '-------------- i,j,',ii_write,jj_write
+    write(6,*) 'b_star',b_star(ii_write,jj_write)
+    write(6,*) 'u_star',u_star(ii_write,jj_write)
+    write(6,*) 'q_star',q_star(ii_write,jj_write)
+        write(6,3001) 'data t_physics_down_begin/'    ,t(ii_write,jj_write,:)
+        write(6,3002) 'data q_physics_down_begin/'    ,r(ii_write,jj_write,:,1)
+        write(6,3002) 'data tdt_physics_down_begin/'    ,tdt(ii_write,jj_write,:)
+        write(6,3002) 'data qdt_physics_down_begin/'    ,rdt(ii_write,jj_write,:,1)
+        write(6,*) '-------------- i,j,',ii_write,jj_write
   endif
 
   ! write(6,*) 'physics_down, beginning, u,',u
@@ -1964,19 +1988,6 @@ real,  dimension(:,:,:), intent(out)  ,optional :: diffm, difft
    !write(6,*) 'physics_down, beginning, t,',t
    !write(6,*) 'physics_down, beginning, tdt,',tdt
 !--> flag111
-
-!<-- flag222
-  do i=is,ie
-  do j=js,je
-  !if (i.eq.68 .and. j.eq.11) then
-    if (any(t(i,j,:) > 350.)) then
-      write(6,*) 'physics_down, beginning, i,j,t',i,j,t(i,j,:),'end'
-      write(6,*) 'physics_down, beginning, i,j,tdt',i,i,tdt(i,j,:),'end'
-    endif
-  !end if
-  enddo
-  enddo
-!<-- flag222
 
 !----------------------------------------------------------------------
 !    define model spatial dimensions.
@@ -2075,18 +2086,16 @@ real,  dimension(:,:,:), intent(out)  ,optional :: diffm, difft
                            udt, vdt, tdt, rdt(:,:,:,1), rdt)
      call mpp_clock_end ( damping_clock )
 
-  i=10
-  j=2
-  if (b_star(i,j).gt.0.1190E-01 .and. b_star(i,j).lt.0.1200E-01) then
-        write(6,*) '-------------- i,j,',i,j
-    write(6,*) 'b_star',b_star(i,j)
-    write(6,*) 'u_star',u_star(i,j)
-    write(6,*) 'q_star',q_star(i,j)
-        write(6,3001) 'data t_damping/'    ,t(i,j,:)
-        write(6,3002) 'data q_damping/'    ,r(i,j,:,1)
-        write(6,3002) 'data tdt_damping/'    ,tdt(i,j,:)
-        write(6,3002) 'data qdt_damping/'    ,rdt(i,j,:,1)
-       write(6,*) '-------------- i,j,',i,j
+  if (do_writeout_column) then
+        write(6,*) '-------------- i,j,',ii_write,jj_write
+    write(6,*) 'b_star',b_star(ii_write,jj_write)
+    write(6,*) 'u_star',u_star(ii_write,jj_write)
+    write(6,*) 'q_star',q_star(ii_write,jj_write)
+        write(6,3001) 'data t_damping/'    ,t(ii_write,jj_write,:)
+        write(6,3002) 'data q_damping/'    ,r(ii_write,jj_write,:,1)
+        write(6,3002) 'data tdt_damping/'    ,tdt(ii_write,jj_write,:)
+        write(6,3002) 'data qdt_damping/'    ,rdt(ii_write,jj_write,:,1)
+       write(6,*) '-------------- i,j,',ii_write,jj_write
   endif
 
 !<-- flag111
@@ -2179,18 +2188,16 @@ real,  dimension(:,:,:), intent(out)  ,optional :: diffm, difft
                                 Rad_flux_block%flux_sw_down_vis_dif)
       call mpp_clock_end ( tracer_clock )
 
-  i=10
-  j=2
-  if (b_star(i,j).gt.0.1190E-01 .and. b_star(i,j).lt.0.1200E-01) then
-        write(6,*) '-------------- i,j,',i,j
-    write(6,*) 'b_star',b_star(i,j)
-    write(6,*) 'u_star',u_star(i,j)
-    write(6,*) 'q_star',q_star(i,j)
-        write(6,3001) 'data t_tracer/'    ,t(i,j,:)
-        write(6,3002) 'data q_tracer/'    ,r(i,j,:,1)
-        write(6,3002) 'data tdt_tracer/'    ,tdt(i,j,:)
-        write(6,3002) 'data qdt_tracer/'    ,rdt(i,j,:,1)
-       write(6,*) '-------------- i,j,',i,j
+  if (do_writeout_column) then
+        write(6,*) '-------------- i,j,',ii_write,jj_write
+    write(6,*) 'b_star',b_star(ii_write,jj_write)
+    write(6,*) 'u_star',u_star(ii_write,jj_write)
+    write(6,*) 'q_star',q_star(ii_write,jj_write)
+        write(6,3001) 'data t_tracer/'    ,t(ii_write,jj_write,:)
+        write(6,3002) 'data q_tracer/'    ,r(ii_write,jj_write,:,1)
+        write(6,3002) 'data tdt_tracer/'    ,tdt(ii_write,jj_write,:)
+        write(6,3002) 'data qdt_tracer/'    ,rdt(ii_write,jj_write,:,1)
+       write(6,*) '-------------- i,j,',ii_write,jj_write
   endif
 
 !<--- flag11
@@ -2406,18 +2413,16 @@ real,  dimension(:,:,:), intent(out)  ,optional :: diffm, difft
       end do
 
 !<--- flag222
-  i=10
-  j=2
-  if (b_star(i,j).gt.0.1190E-01 .and. b_star(i,j).lt.0.1200E-01) then
-        write(6,*) '-------------- i,j,',i,j
-    write(6,*) 'b_star',b_star(i,j)
-    write(6,*) 'u_star',u_star(i,j)
-    write(6,*) 'q_star',q_star(i,j)
-        write(6,3001) 'data t_physics_down_end/'    ,t(i,j,:)
-        write(6,3002) 'data q_physics_down_end/'    ,r(i,j,:,1)
-        write(6,3002) 'data tdt_physics_down_end/'    ,tdt(i,j,:)
-        write(6,3002) 'data qdt_physics_down_end/'    ,rdt(i,j,:,1)
-       write(6,*) '-------------- i,j,',i,j
+  if (do_writeout_column) then
+        write(6,*) '-------------- i,j,',ii_write,jj_write
+    write(6,*) 'b_star',b_star(ii_write,jj_write)
+    write(6,*) 'u_star',u_star(ii_write,jj_write)
+    write(6,*) 'q_star',q_star(ii_write,jj_write)
+        write(6,3001) 'data t_physics_down_end/'    ,t(ii_write,jj_write,:)
+        write(6,3002) 'data q_physics_down_end/'    ,r(ii_write,jj_write,:,1)
+        write(6,3002) 'data tdt_physics_down_end/'    ,tdt(ii_write,jj_write,:)
+        write(6,3002) 'data qdt_physics_down_end/'    ,rdt(ii_write,jj_write,:,1)
+       write(6,*) '-------------- i,j,',ii_write,jj_write
   endif
 
   !do i=is,ie
@@ -2763,6 +2768,16 @@ real,dimension(:,:),    intent(inout)             :: gust
       real, dimension(:,:,:), pointer  :: z_full, z_half
       real, dimension(:,:,:), pointer  :: udt, vdt
       real, dimension(ie-is+1,je-js+1) :: z_pbl
+      real, dimension(size(shflx,1),size(shflx,2)) :: & 
+        shflx_star, evap_star, w1_thv1_surf
+      real, dimension(ie-is+1, je-js+1, npz)   :: &
+        tv, thv, th, rho_full, ape
+      real, parameter :: p00    = 1000.0e2
+      real, parameter :: p00inv = 1./p00
+      real, parameter :: d622   = rdgas/rvgas
+      real, parameter :: d378   = 1.-d622
+      real, parameter :: d608   = d378/d622
+      integer :: kx 
       !--> yi-hsuan
 
       t => Physics_input_block%t
@@ -2773,6 +2788,7 @@ real,dimension(:,:),    intent(inout)             :: gust
       rdt => Physics_tendency_block%q_dt
 
       !<-- yi-hsuan
+      kx=npz
       u => Physics_input_block%u
       v => Physics_input_block%v
       z_full => Physics_input_block%z_full
@@ -2781,6 +2797,19 @@ real,dimension(:,:),    intent(inout)             :: gust
       vdt => Physics_tendency_block%v_dt
       z_pbl(:,:) = pbltop(is:ie,js:je)
       !z_pbl => Phys_mp_exch%pbltop(is:ie,js:je)  ! cause segmentaion fault. real, dimension(:,:), pointer  :: z_pbl
+
+      ape(:,:,:)=(p_full(:,:,:)*p00inv)**(-kappa)  ! ape = (P/P0)^(-Rd/cp)
+      th(:,:,:)=t(:,:,:)*ape(:,:,:)
+
+      tv(:,:,:)=t(:,:,:)*(r(:,:,:,1)*d608+1.0)
+      thv(:,:,:)=tv(:,:,:)*ape(:,:,:)
+      rho_full(:,:,:)=p_full(:,:,:)/rdgas/tv(:,:,:)
+
+      w1_thv1_surf(:,:) = u_star(:,:) * b_star(:,:) * thv(:,:,kx)/grav  &
+                     - d608*th(:,:,kx)* u_star(:,:)*q_star(:,:)
+
+      shflx_star   (:,:) = w1_thv1_surf(:,:) / (1.+d608*r(:,:,kx,1)) * rho_full(:,:,kx) * cp_air
+      evap_star    (:,:) = u_star(:,:) * q_star(:,:) * rho_full(:,:,kx)
       !--> yi-hsuan
 
 !<--- flag11
@@ -2790,20 +2819,18 @@ real,dimension(:,:),    intent(inout)             :: gust
 3003 format (A35,2X,E12.4,',')
 3004 format (A35,2X,33(F10.3,2X,','),A5)
 
-  i=10
-  j=2
-  if (b_star(i,j).gt.0.1190E-01 .and. b_star(i,j).lt.0.1200E-01) then
-        write(6,*) '-------------- i,j,',i,j
-    write(6,*) 'lat',lat(i,j)  ! radians
-    write(6,*) 'lon',lon(i,j)  ! radians
-    write(6,*) 'b_star',b_star(i,j)
-    write(6,*) 'u_star',u_star(i,j)
-    write(6,*) 'q_star',q_star(i,j)
-        write(6,3001) 'data t_physics_up_begin/'    ,t(i,j,:)
-        write(6,3002) 'data q_physics_up_begin/'    ,r(i,j,:,1)
-        write(6,3002) 'data tdt_physics_up_begin/'    ,tdt(i,j,:)
-        write(6,3002) 'data qdt_physics_up_begin/'    ,rdt(i,j,:,1)
-       write(6,*) '-------------- i,j,',i,j
+  if (do_writeout_column) then
+        write(6,*) '-------------- i,j,',ii_write,jj_write
+    write(6,*) 'lat',lat(ii_write,jj_write)  ! radians
+    write(6,*) 'lon',lon(ii_write,jj_write)  ! radians
+    write(6,*) 'b_star',b_star(ii_write,jj_write)
+    write(6,*) 'u_star',u_star(ii_write,jj_write)
+    write(6,*) 'q_star',q_star(ii_write,jj_write)
+        write(6,3001) 'data t_physics_up_begin/'    ,t(ii_write,jj_write,:)
+        write(6,3002) 'data q_physics_up_begin/'    ,r(ii_write,jj_write,:,1)
+        write(6,3002) 'data tdt_physics_up_begin/'    ,tdt(ii_write,jj_write,:)
+        write(6,3002) 'data qdt_physics_up_begin/'    ,rdt(ii_write,jj_write,:,1)
+       write(6,*) '-------------- i,j,',ii_write,jj_write
   endif
 
   ! write(6,*) 'physics_up  , beginning, t,',t
@@ -2928,18 +2955,16 @@ real,dimension(:,:),    intent(inout)             :: gust
 !<-- yi-hsuan debug, 2020-07-02
 
 !<--- flag11
-  i=10
-  j=2
-  if (b_star(i,j).gt.0.1190E-01 .and. b_star(i,j).lt.0.1200E-01) then
-        write(6,*) '-------------- i,j,',i,j
-    write(6,*) 'b_star',b_star(i,j)
-    write(6,*) 'u_star',u_star(i,j)
-    write(6,*) 'q_star',q_star(i,j)
-        write(6,3001) 'data t_diff_up/'    ,t(i,j,:)
-        write(6,3002) 'data q_diff_up/'    ,r(i,j,:,1)
-        write(6,3002) 'data tdt_diff_up/'    ,tdt(i,j,:)
-        write(6,3002) 'data qdt_diff_up/'    ,rdt(i,j,:,1)
-       write(6,*) '-------------- i,j,',i,j
+  if (do_writeout_column) then
+        write(6,*) '-------------- i,j,',ii_write,jj_write
+    write(6,*) 'b_star',b_star(ii_write,jj_write)
+    write(6,*) 'u_star',u_star(ii_write,jj_write)
+    write(6,*) 'q_star',q_star(ii_write,jj_write)
+        write(6,3001) 'data t_diff_up/'    ,t(ii_write,jj_write,:)
+        write(6,3002) 'data q_diff_up/'    ,r(ii_write,jj_write,:,1)
+        write(6,3002) 'data tdt_diff_up/'    ,tdt(ii_write,jj_write,:)
+        write(6,3002) 'data qdt_diff_up/'    ,rdt(ii_write,jj_write,:,1)
+       write(6,*) '-------------- i,j,',ii_write,jj_write
   endif
 
   ! write(6,*) 'physics_up  , diff_up  , t,',t
@@ -3113,31 +3138,33 @@ real,dimension(:,:),    intent(inout)             :: gust
   !do i=i,imax
   !do j=j,jmax
 
-  i=10
-  j=2
-  if (b_star(i,j).gt.0.1190E-01 .and. b_star(i,j).lt.0.1200E-01) then
-    write(6,*) '-------------- i,j,',i,j
-    write(6,*) 'lat',lat(i,j)  ! radians
-    write(6,*) 'lon',lon(i,j)  ! radians
-    write(6,*) 'b_star',b_star(i,j)
-    write(6,*) 'u_star',u_star(i,j)
-    write(6,*) 'q_star',q_star(i,j)
-    write(6,*) 'shflx',shflx(i,j)
-    write(6,*) 'lhflx',lhflx(i,j)
-    write(6,*) 'frac_land',frac_land(i,j)
-        write(6,3001) 'data t_moist_proc/'    ,t(i,j,:)
-        write(6,3002) 'data q_moist_proc/'    ,r(i,j,:,1)
-        write(6,3002) 'data tdt_moist_proc/'    ,tdt(i,j,:)
-        write(6,3002) 'data qdt_moist_proc/'    ,rdt(i,j,:,1)
-       write(6,*) '-------------- i,j,',i,j
+  if (do_writeout_column) then
+    write(6,*) '-------------- i,j,',ii_write,jj_write
+    write(6,*) 'lat',lat(ii_write,jj_write)  ! radians
+    write(6,*) 'lon',lon(ii_write,jj_write)  ! radians
+    write(6,*) 'b_star',b_star(ii_write,jj_write)
+    write(6,*) 'u_star',u_star(ii_write,jj_write)
+    write(6,*) 'q_star',q_star(ii_write,jj_write)
+    write(6,*) 'shflx',shflx(ii_write,jj_write)
+    write(6,*) 'lhflx',lhflx(ii_write,jj_write)
+    write(6,*) 'shflx_star',shflx_star(ii_write,jj_write)
+    write(6,*) 'evap',evap_star(ii_write,jj_write)
+    write(6,*) 'frac_land',frac_land(ii_write,jj_write)
+        write(6,3001) 'data t_moist_proc/'    ,t(ii_write,jj_write,:)
+        write(6,3002) 'data q_moist_proc/'    ,r(ii_write,jj_write,:,1)
+        write(6,3002) 'data tdt_moist_proc/'    ,tdt(ii_write,jj_write,:)
+        write(6,3002) 'data qdt_moist_proc/'    ,rdt(ii_write,jj_write,:,1)
+       write(6,*) '-------------- i,j,',ii_write,jj_write
   endif
 
   !enddo
   !enddo
 
          !yihsuan
-         call error_mesg('physics_driver_up',  &
-         'stop by yihsuan', FATAL)
+         if (do_stop_run) then
+           call error_mesg('physics_driver_up',  &
+           'stop by yihsuan', FATAL)
+         endif
 
 !<--- flag11
   ! write(6,*) 'physics_up  , moist    , t,',t
