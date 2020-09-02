@@ -62,7 +62,7 @@ if [ ! "$choice1" == "y" ]; then
   ls -l $log_latest
   name1=`echo $log_latest | awk '{print $NF}'`
   echo ""
-  echo $name1
+  echo "vi $name1"
   echo ""
   exit 0
 fi
