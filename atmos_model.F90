@@ -1566,6 +1566,8 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
       data_string_t, data_string_q, &
       data_string_tdt, data_string_qdt
     integer ii,jj,kk,nblk,iphy,jphy
+    real :: lat_lower, lat_upper, lon_lower, lon_upper
+    logical :: do_writeout_column
 !-----------------------------------------------------------------------
     call set_atmosphere_pelist()
     !call mpp_clock_begin(atmClock)
@@ -1690,13 +1692,22 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
        iphy = 10  ! index in physics_driver
        jphy = 2
 
-                               !Atmos%lat (is:ie,js:je),   &
-                               ! Atmos%lon (is:ie,js:je),   &
+       !--- set criteria
+       lat_lower = 1.364  ! radian
+       lat_upper = 1.365
+       lon_lower = 5.136  ! radian
+       lon_upper = 5.137
 
+       do_writeout_column = .false.
+       if (Atmos%lat (iphy,jphy).gt.lat_lower .and. Atmos%lat (iphy,jphy).lt.lat_upper .and. &
+           Atmos%lon (iphy,jphy).gt.lon_lower .and. Atmos%lon (iphy,jphy).lt.lon_upper)  then
+         do_writeout_column = .true.
+       endif
+
+       !--- wrtie out
        do ii=isw,iew
        do jj=jsw,jew
-         if (Surface_boundary%b_star(ii,jj).gt.0.1190E-01 .and. &
-             Surface_boundary%b_star(ii,jj).lt.0.1200E-01) then
+         if (do_writeout_column) then
            write(6,*) '--------------------------'
            write(6,*) 'yhc11, string00, ',string00
            write(6,*) 'yhc11, blk',blk
