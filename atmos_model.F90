@@ -1599,17 +1599,42 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
     call set_atmosphere_pelist()
     !call mpp_clock_begin(atmClock)
 
-    !--- atmos_physics_driver_inputs is called once.
-    !      This is called in update_atmos_model_down, but not in update_atmos_model_up
-    !if (string00.eq."before_dyn") then
-    !  call atmos_physics_driver_inputs (Physics, Atm_block, Physics_tendency)
-    !endif
+    !----------------------------------------------------------
+    !
+    ! Explanation: variable Physics and Physics_tendency
+    !
+    !   *** variable Physics ***
+    ! 
+    !   The state variables (e.g. t,q,p_full,p_half, etc.) that physcis will use are stored in
+    !   the "Physics" variable. More specifically, the subroutine "atmos_physics_driver_inputs"
+    !   get the relevant information from the dynamics, and then put this information into Physics variable.
+    !
+    !   Note that atmos_physics_driver_inputs is only called in update_atmos_model_down, not in update_atmos_model_up,
+    !   becasue atmos_physics_driver_inputs will reset T,q,tdt,qdt,etc every time it is called.
+    !
+    !   *** variable Physics_tendency ***
+    !
+    !   The Physics_tendency stores the "accumulated" tendency from each physics, such as radiation, convection, PBL, etc.
+    !   It worth noting that the tendencies from dynamics are NOT present in Physics_tendency.
+    !
+    !   *** Need to know *** 
+    !   
+    !   1. The Physics and Physics_tendency are global variable in this program, and they are reset once
+    !      update_atmos_model_down is called. That is, the values in Physics and Physics_tendency may not be at 
+    !      the current time step. For example, at time step N, the tempreature before dynamics is T1, and changes to T2 after 
+    !      dynamics. The physics uses T2 to calculate all relevant tendencies. At the end of time step step N, T2 changes to T3 which
+    !      includes all physics updated. At the next time step N+1, T in physics is still T2 instead of T3, until the update_atmos_model_down
+    !      is called.
+    !   2. 
+    !----------------------------------------------------------
 
-    !call alloc_physics_tendency_type (yhc_Physics_tendency, Atm_block)
+    !--- 
+    !  store Physics variable at current time step in yhc_Physics.
+    !  yhc_Physics_tendency is not seed by physcis so it is always zero. Putting here because it is 
+    !  required by atmos_physics_driver_inputs  
+    !
+    !  When writing out values, use yhc_Physics and Physics_tendency.  
     call atmos_physics_driver_inputs (yhc_Physics, Atm_block, yhc_Physics_tendency)
-
-    ! I think I will use yhc_Physics (actual t,q) and Physics_tendency (used by physics_driver)
-    ! yhc_Physics_tendency is not read by the physics_driver
 
 !---------------------------------------------------------------------
 ! call physics_driver_down_time_vary to do the time-dependent, spatially
@@ -1742,6 +1767,7 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
        do jj=jsw,jew
          if (do_writeout_column) then
            write(6,*) '--------------------------'
+           write(6,*) 'yhc11, time step: sec,day, ',sec,day
            write(6,*) 'yhc11, string00, ',string00
            write(6,*) 'yhc11, blk',blk
            write(6,*) 'yhc11, isw,iew,jsw,jew',isw,iew,jsw,jew
@@ -1752,8 +1778,8 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
            write(6,*) 'yhc11, Surface_boundary%u_star(ii,jj)',Surface_boundary%u_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%b_star(ii,jj)',Surface_boundary%b_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%q_star(ii,jj)',Surface_boundary%q_star(ii,jj)
-           write(6,3001) data_string_t,   Physics%block(blk)%t(iphy,jphy,:)
-           write(6,3002) data_string_q,   Physics%block(blk)%q(iphy,jphy,:,1)
+           write(6,3001) data_string_t,   yhc_Physics%block(blk)%t(iphy,jphy,:)
+           write(6,3002) data_string_q,   yhc_Physics%block(blk)%q(iphy,jphy,:,1)
            write(6,3002) data_string_tdt, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
            write(6,3002) data_string_qdt, Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)
 
@@ -1761,10 +1787,10 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
            !write(6,3002) 'yhc11, Physics%block(blk)%q(iphy,jphy,:)',Physics%block(blk)%q(iphy,jphy,:,1)
            !write(6,3002) 'yhc11, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)',Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
            !write(6,3002) 'yhc11, Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)',Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)
-           write(6,*) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)    ',Physics%block(blk)%t(iphy,jphy,:)
-           write(6,*) 'yhc11, yhc_Physics%block(blk)%t(iphy,jphy,:)',yhc_Physics%block(blk)%t(iphy,jphy,:)
-           write(6,*) 'yhc11, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)     ',Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
-           write(6,*) 'yhc11, yhc_Physics_tendency%block(blk)%t_dt(iphy,jphy,:) ',yhc_Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
+           !write(6,*) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)    ',Physics%block(blk)%t(iphy,jphy,:)
+           !write(6,*) 'yhc11, yhc_Physics%block(blk)%t(iphy,jphy,:)',yhc_Physics%block(blk)%t(iphy,jphy,:)
+           !write(6,*) 'yhc11, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)     ',Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
+           !write(6,*) 'yhc11, yhc_Physics_tendency%block(blk)%t_dt(iphy,jphy,:) ',yhc_Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
            !write(6,*) 'yhc11, Physics%block(blk)%q(iphy,jphy,:)    ',Physics%block(blk)%q(iphy,jphy,:,1)
            !write(6,*) 'yhc11, yhc_Physics%block(blk)%q(iphy,jphy,:)',yhc_Physics%block(blk)%q(iphy,jphy,:,1)
 
