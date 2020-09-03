@@ -98,6 +98,11 @@ use physics_driver_mod, only: surf_diff_type, &
                               physics_driver_up, & 
                               physics_driver_up_endts
 
+!<--- yihsuan
+use physics_types_mod,       only: alloc_physics_tendency_type,  &
+                                   dealloc_physics_tendency_type
+!---> yihsuan
+
 !-----------------------------------------------------------------------
 
 implicit none
@@ -249,6 +254,10 @@ type (exchange_control_type) :: Exch_ctrl
 type (radiation_type)        :: Radiation
 type (physics_type)          :: Physics
 type (physics_tendency_type) :: Physics_tendency
+!<--- yihsuan add
+type (physics_type)          :: yhc_Physics
+type (physics_tendency_type) :: yhc_Physics_tendency
+!---> yihsuan add
 logical :: do_concurrent_radiation = .false.
 integer :: ntrace, ntprog
 #ifndef use_AM3_physics
@@ -825,10 +834,17 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
                              Atm_block,          &
                              Moist_clouds,       &
                              Physics, Physics_tendency)
+
 !--- need to return tracer values back to dy-core
 !--- because tracer initilization inside of physics
 !--- can reset initial values when they are unset
     call reset_atmos_tracers (Physics, Physics_tendency, Atm_block)
+
+!<--- yihsuan 
+    call alloc_physics_type (yhc_Physics, Atm_block, p_hydro, hydro, do_uni_zfull)
+    call alloc_physics_tendency_type (yhc_Physics_tendency, Atm_block)  
+    call reset_atmos_tracers (yhc_Physics, yhc_Physics_tendency, Atm_block)
+!---> yihsuan 
 
 !---------- initialize radiation -------
     call alloc_radiation_type (Radiation, Atm_block, p_hydro, do_uni_zfull) !miz
@@ -1113,6 +1129,8 @@ subroutine atmos_model_end (Atmos)
 
     call physics_driver_end (Atmos%Time, Physics, Moist_clouds, Physics_tendency, Atm_block)
 
+
+
     idx = size(Rad_flux,1)
     call radiation_driver_end (Rad_flux(idx), Atm_block)
 
@@ -1131,6 +1149,11 @@ subroutine atmos_model_end (Atmos)
     call dealloc_cosp_from_rad_type (Cosp_rad, Exch_ctrl)
     call dealloc_clouds_from_moist_type (Moist_clouds, Exch_ctrl)
     deallocate (Rad_flux, Cosp_rad, Moist_clouds)
+
+!<--- yihsuan
+    call dealloc_physics_type(yhc_Physics) 
+    call dealloc_physics_tendency_type (yhc_Physics_tendency)
+!---> yihsuan
 
 end subroutine atmos_model_end
 ! </SUBROUTINE>
@@ -1561,6 +1584,10 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
     integer :: blk, ibs, ibe, jbs, jbe
     logical, save :: message = .true.
 
+    !type (block_control_type)    :: yhc_Atm_block
+    !type (physics_type)          :: yhc_Physics
+    !type (physics_tendency_type) :: yhc_Physics_tendency
+
     character(len=10) string00
     character(len=35) ::   & 
       data_string_t, data_string_q, &
@@ -1577,6 +1604,12 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
     !if (string00.eq."before_dyn") then
     !  call atmos_physics_driver_inputs (Physics, Atm_block, Physics_tendency)
     !endif
+
+    !call alloc_physics_tendency_type (yhc_Physics_tendency, Atm_block)
+    call atmos_physics_driver_inputs (yhc_Physics, Atm_block, yhc_Physics_tendency)
+
+    ! I think I will use yhc_Physics (actual t,q) and Physics_tendency (used by physics_driver)
+    ! yhc_Physics_tendency is not read by the physics_driver
 
 !---------------------------------------------------------------------
 ! call physics_driver_down_time_vary to do the time-dependent, spatially
@@ -1728,7 +1761,13 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
            !write(6,3002) 'yhc11, Physics%block(blk)%q(iphy,jphy,:)',Physics%block(blk)%q(iphy,jphy,:,1)
            !write(6,3002) 'yhc11, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)',Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
            !write(6,3002) 'yhc11, Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)',Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)
-           !write(6,*) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)',Physics%block(blk)%t(iphy,jphy,:)
+           write(6,*) 'yhc11, Physics%block(blk)%t(iphy,jphy,:)    ',Physics%block(blk)%t(iphy,jphy,:)
+           write(6,*) 'yhc11, yhc_Physics%block(blk)%t(iphy,jphy,:)',yhc_Physics%block(blk)%t(iphy,jphy,:)
+           write(6,*) 'yhc11, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)     ',Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
+           write(6,*) 'yhc11, yhc_Physics_tendency%block(blk)%t_dt(iphy,jphy,:) ',yhc_Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
+           !write(6,*) 'yhc11, Physics%block(blk)%q(iphy,jphy,:)    ',Physics%block(blk)%q(iphy,jphy,:,1)
+           !write(6,*) 'yhc11, yhc_Physics%block(blk)%q(iphy,jphy,:)',yhc_Physics%block(blk)%q(iphy,jphy,:,1)
+
 
            !write(6,*) 'yhc11, ',
            !write(6,*) 'yhc11, ',
