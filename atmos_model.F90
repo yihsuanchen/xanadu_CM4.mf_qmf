@@ -843,7 +843,7 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
 !<--- yihsuan 
     call alloc_physics_type (yhc_Physics, Atm_block, p_hydro, hydro, do_uni_zfull)
     call alloc_physics_tendency_type (yhc_Physics_tendency, Atm_block)  
-    call reset_atmos_tracers (yhc_Physics, yhc_Physics_tendency, Atm_block)
+!this will cause wrong radiation tdt  call reset_atmos_tracers (yhc_Physics, yhc_Physics_tendency, Atm_block)
 !---> yihsuan 
 
 !---------- initialize radiation -------
@@ -1634,7 +1634,7 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
     !  required by atmos_physics_driver_inputs  
     !
     !  When writing out values, use yhc_Physics and Physics_tendency.  
-    call atmos_physics_driver_inputs (yhc_Physics, Atm_block, yhc_Physics_tendency)
+    !call atmos_physics_driver_inputs (yhc_Physics, Atm_block, yhc_Physics_tendency)
 
 !---------------------------------------------------------------------
 ! call physics_driver_down_time_vary to do the time-dependent, spatially
@@ -1778,8 +1778,10 @@ subroutine yhc_get_atmos_model_fields( Surface_boundary, Atmos, string00 )
            write(6,*) 'yhc11, Surface_boundary%u_star(ii,jj)',Surface_boundary%u_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%b_star(ii,jj)',Surface_boundary%b_star(ii,jj)
            write(6,*) 'yhc11, Surface_boundary%q_star(ii,jj)',Surface_boundary%q_star(ii,jj)
-           write(6,3001) data_string_t,   yhc_Physics%block(blk)%t(iphy,jphy,:)
-           write(6,3002) data_string_q,   yhc_Physics%block(blk)%q(iphy,jphy,:,1)
+           !write(6,3001) data_string_t,   yhc_Physics%block(blk)%t(iphy,jphy,:)
+           !write(6,3002) data_string_q,   yhc_Physics%block(blk)%q(iphy,jphy,:,1)
+           write(6,3001) data_string_t,   Physics%block(blk)%t(iphy,jphy,:)
+           write(6,3002) data_string_q,   Physics%block(blk)%q(iphy,jphy,:,1)
            write(6,3002) data_string_tdt, Physics_tendency%block(blk)%t_dt(iphy,jphy,:)
            write(6,3002) data_string_qdt, Physics_tendency%block(blk)%q_dt(iphy,jphy,:,1)
 
