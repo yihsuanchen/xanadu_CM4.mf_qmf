@@ -912,6 +912,16 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
  
   integer ent_stoch                           ! stochastic factor for entrainment
 
+  !integer, dimension(up_num,size(tt,3)) ::    &  ! dimension (up_num, nlay)
+  !      ent_stoch_2d
+
+  real, dimension(size(tt,3),up_num) ::    &  ! dimension (nlay, up_num)
+     ENTf
+  integer, dimension(size(tt,3),up_num) ::    &  ! dimension (nlay, up_num)
+     ENTi
+
+  integer, dimension(2) :: seedmf
+
   real :: water_frac ! liquid water fraction in updraft condensed water (0-1)
 
   !--- parameters
@@ -1113,18 +1123,39 @@ if (b_star(i,j) .gt. 0.) then   ! use b_star here because u_star is always posit
 !   compute the mass flux of each updraft
 !------------------------------------------
 
+!      !------ set entrainment coefficients for each updraft ------
+!      !         ref: Eq (14), Suselj et al. (2019b)  
+!      do n=1,nx
+!        do k=1,kx
+!          !**************************************************
+!          !*** the original random_Poisson caused AMIP run stall at the first time step.
+!          !*** Strangely, the mass_flux ran successfully, but the flux_down_from_atmos stalled.
+!          !*** More strangely, the 8-day and 30-day regression tests ran successfully
+!          !**************************************************
+!          call random_Poisson(dz_rev(k)/ent_length, .true., ent_stoch)  
+!          !ent_stoch = 1.
+!          ent(n,k)  = (ent0 / dz_rev(k)) * real(ent_stoch)
+!          !print*,'n,k,ent_stoch,ent',n,k,ent_stoch,ent(n,k)
+!        end do 
+!      end do
+
       !------ set entrainment coefficients for each updraft ------
       !         ref: Eq (14), Suselj et al. (2019b)  
+      !         The random number generator that Kay Suselj used in the GEOS model.
+      seedmf(1) = 1000000 * ( 100*thli(i,j,kx)   - INT(100*thli(i,j,kx)  )) 
+      seedmf(2) = 1000000 * ( 100*thli(i,j,kx-1) - INT(100*thli(i,j,kx-1)))
+
       do n=1,nx
         do k=1,kx
-          !**************************************************
-          !*** the original random_Poisson caused AMIP run stall at the first time step.
-          !*** Strangely, the mass_flux ran successfully, but the flux_down_from_atmos stalled.
-          !*** More strangely, the 8-day and 30-day regression tests ran successfully
-          !**************************************************
-          !call random_Poisson(dz_rev(k)/ent_length, .true., ent_stoch)  
-          ent_stoch = 1.
-          ent(n,k)  = (ent0 / dz_rev(k)) * real(ent_stoch)
+          ENTf(k,n) = dz_rev(k)/ent_length
+        end do 
+      end do
+
+      call Poisson(1,nx,1,kx, ENTf, ENTi, seedmf)
+      do n=1,nx
+        do k=1,kx
+          ent(n,k)  = (ent0 / dz_rev(k)) * real(ENTi(k,n))
+          !print*,'n,k,ENTi,ent',n,k,ENTi(k,n),ent(n,k)
         end do 
       end do
 
@@ -4766,5 +4797,153 @@ full_init = .false.
     ENDDO
 
   END SUBROUTINE tridiag
+
+
+!#######################################################################
+subroutine Poisson(istart,iend,jstart,jend,mu,POI,seed)
+implicit none
+integer, intent(in) :: istart,iend,jstart,jend
+real,dimension(istart:iend,jstart:jend),intent(in) :: MU
+integer, dimension(istart:iend,jstart:jend), intent(out) :: POI
+integer,dimension(2),intent(in) :: seed
+integer :: seed_len,i,j
+integer,allocatable:: the_seed(:)
+
+!if (seed .le. 0) then seed=max(-seed,1)
+
+
+call random_seed(SIZE=seed_len)
+allocate(the_seed(seed_len))
+the_seed(1:2)=seed
+! Gfortran uses longer seeds, so fill the rest with zero
+if (seed_len > 2) the_seed(3:) = seed(2)
+ 
+ 
+call random_seed(put=the_seed)
+
+
+do i=istart,iend
+ do j=jstart,jend
+    poi(i,j)=poidev(mu(i,j))
+    
+enddo
+ enddo
+
+end subroutine Poisson
+
+!#######################################################################
+FUNCTION poidev(xm)
+!USE nrtype
+!USE nr, ONLY : gammln,ran1
+IMPLICIT NONE
+INTEGER, PARAMETER :: SP = KIND(1.0)
+REAL(SP), INTENT(IN) :: xm
+REAL(SP) :: poidev
+REAL(SP), PARAMETER :: PI=3.141592653589793238462643383279502884197_sp
+!Returns as a floating-point number an integer value that is a random deviate drawn from a
+!Poisson distribution of mean xm, using ran1 as a source of uniform random deviates.
+REAL(SP) :: em,harvest,t,y
+REAL(SP), SAVE :: alxm,g,oldm=-1.0_sp,sq
+!oldm is a flag for whether xm has changed since last call.
+if (xm < 12.0) then !Use direct method.
+if (xm /= oldm) then
+oldm=xm
+g=exp(-xm) !If xm is new, compute the exponential.
+end if
+em=-1
+t=1.0
+do
+em=em+1.0_sp     !Instead of adding exponential deviates it is
+                 !equivalent to multiply uniform deviates.
+                 !We never actually have to take the log;
+                 !merely compare to the pre-computed exponential.
+call random_number(harvest)
+t=t*harvest
+if (t <= g) exit
+end do
+else      !    Use rejection method.
+if (xm /= oldm) then  !If xm has changed since the last call, then precompute
+                       !some functions that occur below.
+oldm=xm
+sq=sqrt(2.0_sp*xm)
+alxm=log(xm)
+g=xm*alxm-gammln_s(xm+1.0_sp) ! The function gammln is the natural log of the
+end if                      ! gamma function, as given in §6.1.
+do
+do
+call random_number(harvest)  !y is a deviate from a Lorentzian comparison
+y=tan(PI*harvest)   !function.
+em=sq*y+xm          !em is y, shifted and scaled.
+if (em >= 0.0) exit !Reject if in regime of zero probability.
+end do
+em=int(em)          ! The trick for integer-valued distributions.
+t=0.9_sp*(1.0_sp+y**2)*exp(em*alxm-gammln_s(em+1.0_sp)-g)
+!The ratio of the desired distribution to the comparison function; we accept or reject
+!by comparing it to another uniform deviate. The factor 0.9 is chosen so that t never
+!exceeds 1.
+call random_number(harvest)
+if (harvest <= t) exit
+end do
+end if
+poidev=em
+END FUNCTION poidev
+        
+!#######################################################################
+FUNCTION arth_d(first,increment,n)
+implicit none
+INTEGER, PARAMETER :: SP = KIND(1.0)
+INTEGER, PARAMETER :: DP = KIND(1.0D0)
+INTEGER, PARAMETER :: I4B = SELECTED_INT_KIND(9)
+REAL(DP), INTENT(IN) :: first,increment
+INTEGER(I4B), PARAMETER :: NPAR_ARTH=16,NPAR2_ARTH=8
+INTEGER(I4B), INTENT(IN) :: n
+REAL(DP), DIMENSION(n) :: arth_d
+INTEGER(I4B) :: k,k2
+REAL(DP) :: temp
+if (n > 0) arth_d(1)=first
+if (n <= NPAR_ARTH) then
+do k=2,n
+arth_d(k)=arth_d(k-1)+increment
+end do
+else
+do k=2,NPAR2_ARTH
+arth_d(k)=arth_d(k-1)+increment
+end do
+temp=increment*NPAR2_ARTH
+k=NPAR2_ARTH
+do
+if (k >= n) exit
+k2=k+k
+arth_d(k+1:min(k2,n))=temp+arth_d(1:min(k,n-k))
+temp=temp+temp
+k=k2
+end do
+end if
+END FUNCTION arth_d
+      
+!#######################################################################
+FUNCTION gammln_s(xx)
+IMPLICIT NONE
+INTEGER, PARAMETER :: SP = KIND(1.0)
+INTEGER, PARAMETER :: DP = KIND(1.0D0)
+REAL(SP), INTENT(IN) :: xx
+REAL(SP) :: gammln_s
+!Returns the value ln[Γ(xx)] for xx > 0.
+REAL(DP) :: tmp,x
+!Internal arithmetic will be done in double precision, a nicety that you can omit if five-figure
+!accuracy is good enough.
+REAL(DP) :: stp = 2.5066282746310005_dp
+REAL(DP), DIMENSION(6) :: coef = (/76.18009172947146_dp,&
+-86.50532032941677_dp,24.01409824083091_dp,&
+-1.231739572450155_dp,0.1208650973866179e-2_dp,&
+-0.5395239384953e-5_dp/)
+!call assert(xx > 0.0, ’gammln_s arg’)
+if (xx .le. 0.) print *,'gammaln fails'
+x=xx
+tmp=x+5.5_dp
+tmp=(x+0.5_dp)*log(tmp)-tmp
+gammln_s=tmp+log(stp*(1.000000000190015_dp+&
+sum(coef(:)/arth_d(x+1.0_dp,1.0_dp,size(coef))))/x)
+END FUNCTION gammln_s
 
 end module mass_flux_mod
