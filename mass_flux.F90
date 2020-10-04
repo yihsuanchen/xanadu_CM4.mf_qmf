@@ -14,6 +14,7 @@ module mass_flux_mod
 !    2020/08/22  ver 4.0  dry version of mass-flux scheme, with difference numerical option
 !    2020/09/26  ver 5.0  Full dry EDMF version (ED can be handled by mass_flux)
 !                         correct the bad loop of mass_flux_tendencies (this in is i,j loop)
+!    2020/09/28  ver 5.1  Replace Poisson program
 !=======================================================================
 
 use           mpp_mod, only: input_nml_file
@@ -80,6 +81,9 @@ real, parameter :: p00inv = 1./p00
 real, parameter :: d622   = rdgas/rvgas
 real, parameter :: d378   = 1.-d622
 real, parameter :: d608   = d378/d622
+
+!integer, parameter:: dp=kind(0.d0)                   ! double precision
+!integer, parameter:: sp=kind(0.)                     ! single precision
 
 !---------------------------------------------------------------------
 ! --- Namelist
@@ -161,6 +165,7 @@ logical :: do_writeout_profile = .false.  ! write out some fields into the fms.l
 logical :: do_stop_run = .false.          ! stop the simulation if some problematic things happen, e.g. 2000 K/day heating rate
 
 logical :: do_check_trc_rlzbility = .true. ! check tracer realizability
+logical :: do_stoch_entrain       = .true. ! stochastic entrainment
 
 logical :: use_tau_mf = .true.            ! .true. use current u,v,t,q in the mass_flux program
                                           ! else   use updated u,v,t,q, i.e. u,v,t,q plus the tendencies times dt
@@ -182,7 +187,7 @@ namelist / mass_flux_nml / up_num, do_mf_micro, &
                            option_MF_env_half, &
                            use_tau_mf,   &
                            option_MF_numerics, option_ED_numerics, option_surface_flux, do_include_surf_flux, do_ED_in_mass_flux, &      
-                           do_writeout_profile, do_printouts, do_stop_run, do_check_trc_rlzbility
+                           do_writeout_profile, do_printouts, do_stop_run, do_check_trc_rlzbility, do_stoch_entrain
          
 !---------------------------------------------------------------------
 !--- Diagnostic fields       
@@ -1128,6 +1133,7 @@ if (b_star(i,j) .gt. 0.) then   ! use b_star here because u_star is always posit
 !      do n=1,nx
 !        do k=1,kx
 !          !**************************************************
+!          !*** the subroutine random_Poisson is taken from Kay's EDMF package in WRF
 !          !*** the original random_Poisson caused AMIP run stall at the first time step.
 !          !*** Strangely, the mass_flux ran successfully, but the flux_down_from_atmos stalled.
 !          !*** More strangely, the 8-day and 30-day regression tests ran successfully
@@ -1142,8 +1148,6 @@ if (b_star(i,j) .gt. 0.) then   ! use b_star here because u_star is always posit
       !------ set entrainment coefficients for each updraft ------
       !         ref: Eq (14), Suselj et al. (2019b)  
       !         The random number generator that Kay Suselj used in the GEOS model.
-      seedmf(1) = 1000000 * ( 100*thli(i,j,kx)   - INT(100*thli(i,j,kx)  )) 
-      seedmf(2) = 1000000 * ( 100*thli(i,j,kx-1) - INT(100*thli(i,j,kx-1)))
 
       do n=1,nx
         do k=1,kx
@@ -1151,7 +1155,14 @@ if (b_star(i,j) .gt. 0.) then   ! use b_star here because u_star is always posit
         end do 
       end do
 
-      call Poisson(1,nx,1,kx, ENTf, ENTi, seedmf)
+      if (do_stoch_entrain) then
+        seedmf(1) = 1000000 * ( 100*thli(i,j,kx)   - INT(100*thli(i,j,kx)  )) 
+        seedmf(2) = 1000000 * ( 100*thli(i,j,kx-1) - INT(100*thli(i,j,kx-1)))
+        call Poisson(1,nx,1,kx, ENTf, ENTi, seedmf)
+      else
+        ENTi = 1
+      endif 
+
       do n=1,nx
         do k=1,kx
           ent(n,k)  = (ent0 / dz_rev(k)) * real(ENTi(k,n))
@@ -4456,312 +4467,312 @@ end function
 
 !#######################################################################
 
-subroutine random_Poisson(mu,first,ival) 
-!**********************************************************************
-!     Translated to Fortran 90 by Alan Miller from:
-!                           RANLIB
+!subroutine random_Poisson(mu,first,ival) 
+!!**********************************************************************
+!!     Translated to Fortran 90 by Alan Miller from:
+!!                           RANLIB
+!!
+!!     Library of Fortran Routines for Random Number Generation
+!!
+!!                    Compiled and Written by:
+!!
+!!                         Barry W. Brown
+!!                          James Lovato
+!!
+!!             Department of Biomathematics, Box 237
+!!             The University of Texas, M.D. Anderson Cancer Center
+!!             1515 Holcombe Boulevard
+!!             Houston, TX      77030
+!!
+!! This work was supported by grant CA-16672 from the National Cancer Institute.
 !
-!     Library of Fortran Routines for Random Number Generation
+!!                    GENerate POIsson random deviate
+!!                            Function
+!! Generates a single random deviate from a Poisson distribution with mean mu.
+!!                            Arguments
+!!     mu --> The mean of the Poisson distribution from which
+!!            a random deviate is to be generated.
+!!                              REAL mu
+!!                              Method
+!!     For details see:
+!!               Ahrens, J.H. and Dieter, U.
+!!               Computer Generation of Poisson Deviates
+!!               From Modified Normal Distributions.
+!!               ACM Trans. Math. Software, 8, 2
+!!               (June 1982),163-179
+!!     TABLES: COEFFICIENTS A0-A7 FOR STEP F. FACTORIALS FACT
+!!     COEFFICIENTS A(K) - FOR PX = FK*V*V*SUM(A(K)*V**K)-DEL
+!!     SEPARATION OF CASES A AND B
 !
-!                    Compiled and Written by:
+!!     .. Scalar Arguments ..
+!	REAL, INTENT(IN)    :: mu
+!	LOGICAL, INTENT(IN) :: first
+!INTEGER             :: ival
+!!     ..
+!!     .. Local Scalars ..
+!	REAL          :: b1, b2, c, c0, c1, c2, c3, del, difmuk, e, fk, fx, fy, g,  &
+!                    omega, px, py, t, u, v, x, xx
+!	REAL, SAVE    :: s, d, p, q, p0
+!        INTEGER       :: j, k, kflag
+!	LOGICAL, SAVE :: full_init
+!        INTEGER, SAVE :: l, m
+!!     ..
+!!     .. Local Arrays ..
+!	REAL, SAVE    :: pp(35)
+!!     ..
+!!     .. Data statements ..
+!	REAL, PARAMETER :: a0 = -.5, a1 = .3333333, a2 = -.2500068, a3 = .2000118,  &
+!                a4 = -.1661269, a5 = .1421878, a6 = -.1384794,   &
+!                 a7 = .1250060
 !
-!                         Barry W. Brown
-!                          James Lovato
+!	REAL, PARAMETER :: fact(10) = (/ 1., 1., 2., 6., 24., 120., 720., 5040.,  &
+!            40320., 362880. /)
 !
-!             Department of Biomathematics, Box 237
-!             The University of Texas, M.D. Anderson Cancer Center
-!             1515 Holcombe Boulevard
-!             Houston, TX      77030
+!        REAL, PARAMETER  :: zero = 0.0, half = 0.5, one = 1.0, two = 2.0  ! yi-hsuan.chen added, 2020-04-03
 !
-! This work was supported by grant CA-16672 from the National Cancer Institute.
-
-!                    GENerate POIsson random deviate
-!                            Function
-! Generates a single random deviate from a Poisson distribution with mean mu.
-!                            Arguments
-!     mu --> The mean of the Poisson distribution from which
-!            a random deviate is to be generated.
-!                              REAL mu
-!                              Method
-!     For details see:
-!               Ahrens, J.H. and Dieter, U.
-!               Computer Generation of Poisson Deviates
-!               From Modified Normal Distributions.
-!               ACM Trans. Math. Software, 8, 2
-!               (June 1982),163-179
-!     TABLES: COEFFICIENTS A0-A7 FOR STEP F. FACTORIALS FACT
-!     COEFFICIENTS A(K) - FOR PX = FK*V*V*SUM(A(K)*V**K)-DEL
-!     SEPARATION OF CASES A AND B
-
-!     .. Scalar Arguments ..
-	REAL, INTENT(IN)    :: mu
-	LOGICAL, INTENT(IN) :: first
-INTEGER             :: ival
-!     ..
-!     .. Local Scalars ..
-	REAL          :: b1, b2, c, c0, c1, c2, c3, del, difmuk, e, fk, fx, fy, g,  &
-                    omega, px, py, t, u, v, x, xx
-	REAL, SAVE    :: s, d, p, q, p0
-        INTEGER       :: j, k, kflag
-	LOGICAL, SAVE :: full_init
-        INTEGER, SAVE :: l, m
-!     ..
-!     .. Local Arrays ..
-	REAL, SAVE    :: pp(35)
-!     ..
-!     .. Data statements ..
-	REAL, PARAMETER :: a0 = -.5, a1 = .3333333, a2 = -.2500068, a3 = .2000118,  &
-                a4 = -.1661269, a5 = .1421878, a6 = -.1384794,   &
-                 a7 = .1250060
-
-	REAL, PARAMETER :: fact(10) = (/ 1., 1., 2., 6., 24., 120., 720., 5040.,  &
-            40320., 362880. /)
-
-        REAL, PARAMETER  :: zero = 0.0, half = 0.5, one = 1.0, two = 2.0  ! yi-hsuan.chen added, 2020-04-03
-
-!     ..
-!     .. Executable Statements ..
-   IF (mu > 10.0) THEN
-!     C A S E  A. (RECALCULATION OF S, D, L IF MU HAS CHANGED)
-
-  IF (first) THEN
-s = SQRT(mu)
-d = 6.0*mu*mu
-
-!             THE POISSON PROBABILITIES PK EXCEED THE DISCRETE NORMAL
-!             PROBABILITIES FK WHENEVER K >= M(MU). L=IFIX(MU-1.1484)
-!             IS AN UPPER BOUND TO M(MU) FOR ALL MU >= 10 .
-
-l = mu - 1.1484
-full_init = .false.
-  END IF
-
-
-!     STEP N. NORMAL SAMPLE - random_normal() FOR STANDARD NORMAL DEVIATE
-
-	  g = mu + s*random_normal()
-	  IF (g > 0.0) THEN
-		ival = g
-
-	!     STEP I. IMMEDIATE ACCEPTANCE IF ival IS LARGE ENOUGH
-
-		IF (ival>=l) RETURN
-
-	!     STEP S. SQUEEZE ACCEPTANCE - SAMPLE U
-
-		fk = ival
-		difmuk = mu - fk
-		CALL RANDOM_NUMBER(u)
-		IF (d*u >= difmuk*difmuk*difmuk) RETURN
-	  END IF
-
-	!     STEP P. PREPARATIONS FOR STEPS Q AND H.
-	!             (RECALCULATIONS OF PARAMETERS IF NECESSARY)
-	!             .3989423=(2*PI)**(-.5)  .416667E-1=1./24.  .1428571=1./7.
-	!             THE QUANTITIES B1, B2, C3, C2, C1, C0 ARE FOR THE HERMITE
-	!             APPROXIMATIONS TO THE DISCRETE NORMAL PROBABILITIES FK.
-	!             C=.1069/MU GUARANTEES MAJORIZATION BY THE 'HAT'-FUNCTION.
-
-	  IF (.NOT. full_init) THEN
-		omega = .3989423/s
-		b1 = .4166667E-1/mu
-		b2 = .3*b1*b1
-		c3 = .1428571*b1*b2
-		c2 = b2 - 15.*c3
-		c1 = b1 - 6.*b2 + 45.*c3
-		c0 = 1. - b1 + 3.*b2 - 15.*c3
-		c = .1069/mu
-		full_init = .true.
-	  END IF
-
-	  IF (g < 0.0) GO TO 50
-
-	!             'SUBROUTINE' F IS CALLED (KFLAG=0 FOR CORRECT RETURN)
-
-	  kflag = 0
-	  GO TO 70
-
-	!     STEP Q. QUOTIENT ACCEPTANCE (RARE CASE)
-
-	  40 IF (fy-u*fy <= py*EXP(px-fx)) RETURN
-
-	!     STEP E. EXPONENTIAL SAMPLE - random_exponential() FOR STANDARD EXPONENTIAL
-	!             DEVIATE E AND SAMPLE T FROM THE LAPLACE 'HAT'
-	!             (IF T <= -.6744 THEN PK < FK FOR ALL MU >= 10.)
-
-	  50 e = random_exponential()
-	  CALL RANDOM_NUMBER(u)
-	  u = u + u - one
-	  t = 1.8 + SIGN(e, u)
-	  IF (t <= (-.6744)) GO TO 50
-	  ival = mu + s*t
-	  fk = ival
-	  difmuk = mu - fk
-
-	!             'SUBROUTINE' F IS CALLED (KFLAG=1 FOR CORRECT RETURN)
-
-	  kflag = 1
-	  GO TO 70
-
-	!     STEP H. HAT ACCEPTANCE (E IS REPEATED ON REJECTION)
-
-	  60 IF (c*ABS(u) > py*EXP(px+e) - fy*EXP(fx+e)) GO TO 50
-	  RETURN
-
-	!     STEP F. 'SUBROUTINE' F. CALCULATION OF PX, PY, FX, FY.
-	!             CASE ival < 10 USES FACTORIALS FROM TABLE FACT
-
-	  70 IF (ival>=10) GO TO 80
-	  px = -mu
-	  py = mu**ival/fact(ival+1)
-	  GO TO 110
-
-	!             CASE ival >= 10 USES POLYNOMIAL APPROXIMATION
-	!             A0-A7 FOR ACCURACY WHEN ADVISABLE
-	!             .8333333E-1=1./12.  .3989423=(2*PI)**(-.5)
-
-	  80 del = .8333333E-1/fk
-	  del = del - 4.8*del*del*del
-	  v = difmuk/fk
-	  IF (ABS(v)>0.25) THEN
-		px = fk*LOG(one + v) - difmuk - del
-	  ELSE
-		px = fk*v*v* (((((((a7*v+a6)*v+a5)*v+a4)*v+a3)*v+a2)*v+a1)*v+a0) - del
-	  END IF
-	  py = .3989423/SQRT(fk)
-	  110 x = (half - difmuk)/s
-	  xx = x*x
-	  fx = -half*xx
-	  fy = omega* (((c3*xx + c2)*xx + c1)*xx + c0)
-	  IF (kflag <= 0) GO TO 40
-	  GO TO 60
-
-	!---------------------------------------------------------------------------
-	!     C A S E  B.    mu < 10
-	!     START NEW TABLE AND CALCULATE P0 IF NECESSARY
-
-	ELSE
-	  IF (first) THEN
-		m = MAX(1, INT(mu))
-		l = 0
-		p = EXP(-mu)
-		q = p
-		p0 = p
-	  END IF
-
-	!     STEP U. UNIFORM SAMPLE FOR INVERSION METHOD
-
-	  DO
-		CALL RANDOM_NUMBER(u)
-		ival = 0
-		IF (u <= p0) RETURN
-
-	!     STEP T. TABLE COMPARISON UNTIL THE END PP(L) OF THE
-	!             PP-TABLE OF CUMULATIVE POISSON PROBABILITIES
-	!             (0.458=PP(9) FOR MU=10)
-
-		IF (l == 0) GO TO 150
-		j = 1
-		IF (u > 0.458) j = MIN(l, m)
-		DO k = j, l
-		  IF (u <= pp(k)) GO TO 180
-		END DO
-		IF (l == 35) CYCLE
-
-	!     STEP C. CREATION OF NEW POISSON PROBABILITIES P
-	!             AND THEIR CUMULATIVES Q=PP(K)
-
-		150 l = l + 1
-		DO k = l, 35
-		  p = p*mu / k
-		  q = q + p
-		  pp(k) = q
-		  IF (u <= q) GO TO 170
-		END DO
-		l = 35
-	  END DO
-
-	  170 l = k
-	  180 ival = k
-	  RETURN
-	END IF
-
-	RETURN
-	END subroutine random_Poisson
-
-!#######################################################################
-	FUNCTION random_normal() RESULT(fn_val)
-
-	! Adapted from the following Fortran 77 code
-	!      ALGORITHM 712, COLLECTED ALGORITHMS FROM ACM.
-	!      THIS WORK PUBLISHED IN TRANSACTIONS ON MATHEMATICAL SOFTWARE,
-	!      VOL. 18, NO. 4, DECEMBER, 1992, PP. 434-435.
-
-	!  The function random_normal() returns a normally distributed pseudo-random
-	!  number with zero mean and unit variance.
-
-	!  The algorithm uses the ratio of uniforms method of A.J. Kinderman
-	!  and J.F. Monahan augmented with quadratic bounding curves.
-
-	REAL :: fn_val
-
-	!     Local variables
-	REAL     :: s = 0.449871, t = -0.386595, a = 0.19600, b = 0.25472,           &
-				r1 = 0.27597, r2 = 0.27846, u, v, x, y, q
-        REAL, PARAMETER  :: zero = 0.0, half = 0.5, one = 1.0, two = 2.0  ! yi-hsuan.chen added, 2020-04-03
-
-	!     Generate P = (u,v) uniform in rectangle enclosing acceptance region
-
-	DO
-	  CALL RANDOM_NUMBER(u)
-	  CALL RANDOM_NUMBER(v)
-	  v = 1.7156 * (v - half)
-
-	!     Evaluate the quadratic form
-	  x = u - s
-	  y = ABS(v) - t
-	  q = x**2 + y*(a*y - b*x)
-
-	!     Accept P if inside inner ellipse
-	  IF (q < r1) EXIT
-	!     Reject P if outside outer ellipse
-	  IF (q > r2) CYCLE
-	!     Reject P if outside acceptance region
-	  IF (v**2 < -4.0*LOG(u)*u**2) EXIT
-	END DO
-
-	!     Return ratio of P's coordinates as the normal deviate
-	fn_val = v/u
-	RETURN
-
-	END FUNCTION random_normal
-
-!#######################################################################
-	FUNCTION random_exponential() RESULT(fn_val)
-
-	! Adapted from Fortran 77 code from the book:
-	!     Dagpunar, J. 'Principles of random variate generation'
-	!     Clarendon Press, Oxford, 1988.   ISBN 0-19-852202-9
-
-	! FUNCTION GENERATES A RANDOM VARIATE IN [0,INFINITY) FROM
-	! A NEGATIVE EXPONENTIAL DlSTRIBUTION WlTH DENSITY PROPORTIONAL
-	! TO EXP(-random_exponential), USING INVERSION.
-
-	REAL  :: fn_val
-
-	!     Local variable
-	REAL  :: r
-        REAL, PARAMETER  :: zero = 0.0, half = 0.5, one = 1.0, two = 2.0  ! yi-hsuan.chen added, 2020-04-03
-
-	DO
-	  CALL RANDOM_NUMBER(r)
-	  IF (r > zero) EXIT
-	END DO
-
-	fn_val = -LOG(r)
-	RETURN
-
-	END FUNCTION random_exponential
+!!     ..
+!!     .. Executable Statements ..
+!   IF (mu > 10.0) THEN
+!!     C A S E  A. (RECALCULATION OF S, D, L IF MU HAS CHANGED)
+!
+!  IF (first) THEN
+!s = SQRT(mu)
+!d = 6.0*mu*mu
+!
+!!             THE POISSON PROBABILITIES PK EXCEED THE DISCRETE NORMAL
+!!             PROBABILITIES FK WHENEVER K >= M(MU). L=IFIX(MU-1.1484)
+!!             IS AN UPPER BOUND TO M(MU) FOR ALL MU >= 10 .
+!
+!l = mu - 1.1484
+!full_init = .false.
+!  END IF
+!
+!
+!!     STEP N. NORMAL SAMPLE - random_normal() FOR STANDARD NORMAL DEVIATE
+!
+!	  g = mu + s*random_normal()
+!	  IF (g > 0.0) THEN
+!		ival = g
+!
+!	!     STEP I. IMMEDIATE ACCEPTANCE IF ival IS LARGE ENOUGH
+!
+!		IF (ival>=l) RETURN
+!
+!	!     STEP S. SQUEEZE ACCEPTANCE - SAMPLE U
+!
+!		fk = ival
+!		difmuk = mu - fk
+!		CALL RANDOM_NUMBER(u)
+!		IF (d*u >= difmuk*difmuk*difmuk) RETURN
+!	  END IF
+!
+!	!     STEP P. PREPARATIONS FOR STEPS Q AND H.
+!	!             (RECALCULATIONS OF PARAMETERS IF NECESSARY)
+!	!             .3989423=(2*PI)**(-.5)  .416667E-1=1./24.  .1428571=1./7.
+!	!             THE QUANTITIES B1, B2, C3, C2, C1, C0 ARE FOR THE HERMITE
+!	!             APPROXIMATIONS TO THE DISCRETE NORMAL PROBABILITIES FK.
+!	!             C=.1069/MU GUARANTEES MAJORIZATION BY THE 'HAT'-FUNCTION.
+!
+!	  IF (.NOT. full_init) THEN
+!		omega = .3989423/s
+!		b1 = .4166667E-1/mu
+!		b2 = .3*b1*b1
+!		c3 = .1428571*b1*b2
+!		c2 = b2 - 15.*c3
+!		c1 = b1 - 6.*b2 + 45.*c3
+!		c0 = 1. - b1 + 3.*b2 - 15.*c3
+!		c = .1069/mu
+!		full_init = .true.
+!	  END IF
+!
+!	  IF (g < 0.0) GO TO 50
+!
+!	!             'SUBROUTINE' F IS CALLED (KFLAG=0 FOR CORRECT RETURN)
+!
+!	  kflag = 0
+!	  GO TO 70
+!
+!	!     STEP Q. QUOTIENT ACCEPTANCE (RARE CASE)
+!
+!	  40 IF (fy-u*fy <= py*EXP(px-fx)) RETURN
+!
+!	!     STEP E. EXPONENTIAL SAMPLE - random_exponential() FOR STANDARD EXPONENTIAL
+!	!             DEVIATE E AND SAMPLE T FROM THE LAPLACE 'HAT'
+!	!             (IF T <= -.6744 THEN PK < FK FOR ALL MU >= 10.)
+!
+!	  50 e = random_exponential()
+!	  CALL RANDOM_NUMBER(u)
+!	  u = u + u - one
+!	  t = 1.8 + SIGN(e, u)
+!	  IF (t <= (-.6744)) GO TO 50
+!	  ival = mu + s*t
+!	  fk = ival
+!	  difmuk = mu - fk
+!
+!	!             'SUBROUTINE' F IS CALLED (KFLAG=1 FOR CORRECT RETURN)
+!
+!	  kflag = 1
+!	  GO TO 70
+!
+!	!     STEP H. HAT ACCEPTANCE (E IS REPEATED ON REJECTION)
+!
+!	  60 IF (c*ABS(u) > py*EXP(px+e) - fy*EXP(fx+e)) GO TO 50
+!	  RETURN
+!
+!	!     STEP F. 'SUBROUTINE' F. CALCULATION OF PX, PY, FX, FY.
+!	!             CASE ival < 10 USES FACTORIALS FROM TABLE FACT
+!
+!	  70 IF (ival>=10) GO TO 80
+!	  px = -mu
+!	  py = mu**ival/fact(ival+1)
+!	  GO TO 110
+!
+!	!             CASE ival >= 10 USES POLYNOMIAL APPROXIMATION
+!	!             A0-A7 FOR ACCURACY WHEN ADVISABLE
+!	!             .8333333E-1=1./12.  .3989423=(2*PI)**(-.5)
+!
+!	  80 del = .8333333E-1/fk
+!	  del = del - 4.8*del*del*del
+!	  v = difmuk/fk
+!	  IF (ABS(v)>0.25) THEN
+!		px = fk*LOG(one + v) - difmuk - del
+!	  ELSE
+!		px = fk*v*v* (((((((a7*v+a6)*v+a5)*v+a4)*v+a3)*v+a2)*v+a1)*v+a0) - del
+!	  END IF
+!	  py = .3989423/SQRT(fk)
+!	  110 x = (half - difmuk)/s
+!	  xx = x*x
+!	  fx = -half*xx
+!	  fy = omega* (((c3*xx + c2)*xx + c1)*xx + c0)
+!	  IF (kflag <= 0) GO TO 40
+!	  GO TO 60
+!
+!	!---------------------------------------------------------------------------
+!	!     C A S E  B.    mu < 10
+!	!     START NEW TABLE AND CALCULATE P0 IF NECESSARY
+!
+!	ELSE
+!	  IF (first) THEN
+!		m = MAX(1, INT(mu))
+!		l = 0
+!		p = EXP(-mu)
+!		q = p
+!		p0 = p
+!	  END IF
+!
+!	!     STEP U. UNIFORM SAMPLE FOR INVERSION METHOD
+!
+!	  DO
+!		CALL RANDOM_NUMBER(u)
+!		ival = 0
+!		IF (u <= p0) RETURN
+!
+!	!     STEP T. TABLE COMPARISON UNTIL THE END PP(L) OF THE
+!	!             PP-TABLE OF CUMULATIVE POISSON PROBABILITIES
+!	!             (0.458=PP(9) FOR MU=10)
+!
+!		IF (l == 0) GO TO 150
+!		j = 1
+!		IF (u > 0.458) j = MIN(l, m)
+!		DO k = j, l
+!		  IF (u <= pp(k)) GO TO 180
+!		END DO
+!		IF (l == 35) CYCLE
+!
+!	!     STEP C. CREATION OF NEW POISSON PROBABILITIES P
+!	!             AND THEIR CUMULATIVES Q=PP(K)
+!
+!		150 l = l + 1
+!		DO k = l, 35
+!		  p = p*mu / k
+!		  q = q + p
+!		  pp(k) = q
+!		  IF (u <= q) GO TO 170
+!		END DO
+!		l = 35
+!	  END DO
+!
+!	  170 l = k
+!	  180 ival = k
+!	  RETURN
+!	END IF
+!
+!	RETURN
+!	END subroutine random_Poisson
+!
+!!#######################################################################
+!	FUNCTION random_normal() RESULT(fn_val)
+!
+!	! Adapted from the following Fortran 77 code
+!	!      ALGORITHM 712, COLLECTED ALGORITHMS FROM ACM.
+!	!      THIS WORK PUBLISHED IN TRANSACTIONS ON MATHEMATICAL SOFTWARE,
+!	!      VOL. 18, NO. 4, DECEMBER, 1992, PP. 434-435.
+!
+!	!  The function random_normal() returns a normally distributed pseudo-random
+!	!  number with zero mean and unit variance.
+!
+!	!  The algorithm uses the ratio of uniforms method of A.J. Kinderman
+!	!  and J.F. Monahan augmented with quadratic bounding curves.
+!
+!	REAL :: fn_val
+!
+!	!     Local variables
+!	REAL     :: s = 0.449871, t = -0.386595, a = 0.19600, b = 0.25472,           &
+!				r1 = 0.27597, r2 = 0.27846, u, v, x, y, q
+!        REAL, PARAMETER  :: zero = 0.0, half = 0.5, one = 1.0, two = 2.0  ! yi-hsuan.chen added, 2020-04-03
+!
+!	!     Generate P = (u,v) uniform in rectangle enclosing acceptance region
+!
+!	DO
+!	  CALL RANDOM_NUMBER(u)
+!	  CALL RANDOM_NUMBER(v)
+!	  v = 1.7156 * (v - half)
+!
+!	!     Evaluate the quadratic form
+!	  x = u - s
+!	  y = ABS(v) - t
+!	  q = x**2 + y*(a*y - b*x)
+!
+!	!     Accept P if inside inner ellipse
+!	  IF (q < r1) EXIT
+!	!     Reject P if outside outer ellipse
+!	  IF (q > r2) CYCLE
+!	!     Reject P if outside acceptance region
+!	  IF (v**2 < -4.0*LOG(u)*u**2) EXIT
+!	END DO
+!
+!	!     Return ratio of P's coordinates as the normal deviate
+!	fn_val = v/u
+!	RETURN
+!
+!	END FUNCTION random_normal
+!
+!!#######################################################################
+!	FUNCTION random_exponential() RESULT(fn_val)
+!
+!	! Adapted from Fortran 77 code from the book:
+!	!     Dagpunar, J. 'Principles of random variate generation'
+!	!     Clarendon Press, Oxford, 1988.   ISBN 0-19-852202-9
+!
+!	! FUNCTION GENERATES A RANDOM VARIATE IN [0,INFINITY) FROM
+!	! A NEGATIVE EXPONENTIAL DlSTRIBUTION WlTH DENSITY PROPORTIONAL
+!	! TO EXP(-random_exponential), USING INVERSION.
+!
+!	REAL  :: fn_val
+!
+!	!     Local variable
+!	REAL  :: r
+!        REAL, PARAMETER  :: zero = 0.0, half = 0.5, one = 1.0, two = 2.0  ! yi-hsuan.chen added, 2020-04-03
+!
+!	DO
+!	  CALL RANDOM_NUMBER(r)
+!	  IF (r > zero) EXIT
+!	END DO
+!
+!	fn_val = -LOG(r)
+!	RETURN
+!
+!	END FUNCTION random_exponential
 
 !#######################################################################
   SUBROUTINE tridiag(n,a,b,c,d)
@@ -4819,7 +4830,7 @@ the_seed(1:2)=seed
 if (seed_len > 2) the_seed(3:) = seed(2)
  
  
-call random_seed(put=the_seed)
+!yhc call random_seed(put=the_seed)
 
 
 do i=istart,iend
@@ -4828,6 +4839,8 @@ do i=istart,iend
     
 enddo
  enddo
+
+deallocate(the_seed)  ! yhc added
 
 end subroutine Poisson
 
@@ -4844,6 +4857,7 @@ REAL(SP), PARAMETER :: PI=3.141592653589793238462643383279502884197_sp
 !Poisson distribution of mean xm, using ran1 as a source of uniform random deviates.
 REAL(SP) :: em,harvest,t,y
 REAL(SP), SAVE :: alxm,g,oldm=-1.0_sp,sq
+REAL(SP) :: tt1
 !oldm is a flag for whether xm has changed since last call.
 if (xm < 12.0) then !Use direct method.
 if (xm /= oldm) then
@@ -4876,7 +4890,19 @@ y=tan(PI*harvest)   !function.
 em=sq*y+xm          !em is y, shifted and scaled.
 if (em >= 0.0) exit !Reject if in regime of zero probability.
 end do
+
 em=int(em)          ! The trick for integer-valued distributions.
+
+!<-- yhc
+tt1=em+1.0_sp
+if (em.le.0.) then
+  write(6,*) 'ggg, poidev,1 em,sq,y,xm', em,sq,y,xm
+  !if (em.le.0.) em=int(1.)  ! yhc
+  !write(6,*) 'ggg, poidev,2 em,sq,y,xm', em,sq,y,xm
+  call error_mesg(' mass_flux_mod',' poidev, em+1 is negative', FATAL )
+endif
+!--> yhc
+
 t=0.9_sp*(1.0_sp+y**2)*exp(em*alxm-gammln_s(em+1.0_sp)-g)
 !The ratio of the desired distribution to the comparison function; we accept or reject
 !by comparing it to another uniform deviate. The factor 0.9 is chosen so that t never
@@ -4939,6 +4965,14 @@ REAL(DP), DIMENSION(6) :: coef = (/76.18009172947146_dp,&
 -0.5395239384953e-5_dp/)
 !call assert(xx > 0.0, ’gammln_s arg’)
 if (xx .le. 0.) print *,'gammaln fails'
+
+!<-- yhc
+if (xx .le. 0.) then
+  write(6,*),'ggg, gammaln fails, ',xx
+  call error_mesg(' mass_flux_mod',' gammaln fails', FATAL )
+endif
+!--> yhc
+
 x=xx
 tmp=x+5.5_dp
 tmp=(x+0.5_dp)*log(tmp)-tmp
