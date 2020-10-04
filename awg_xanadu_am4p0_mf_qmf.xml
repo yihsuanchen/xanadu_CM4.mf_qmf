@@ -50,6 +50,7 @@ ref> c96L33_am4p0/ncrc4.intel-prod-openmp/0m8d                       aa5b334386f
 
   <property name="FRE_STEM" value="awg/$(RELEASE)"/>
   <property name="FRE_VERSION" value="bronx-18"/>
+  <property name="FMS_COMP_NAME" value="am4p0_mf_qmf"/>
   <property name="FMS_COMP_EXP" value="$(AWG_BASE)_$(AWG_VERSION)_am4p0_mf_qmf"/>
   <property name="XMLDIR" value="xml_xanadu_am4p0_mf_qmf"/>
 
@@ -59,8 +60,10 @@ ref> c96L33_am4p0/ncrc4.intel-prod-openmp/0m8d                       aa5b334386f
   <property name="MDBIswitch" value="off"/>                    <!-- on/off switch for MDBI database -->
   <property name="ProjectID" value="AWG"/>                     <!-- database top level -->
 
-  <property name="AWG_INPUT_HOME_GAEA" value="$HOME/$(FRE_STEM)/xml_$(AWG_VERSION)_donner_my25_turb_mf/awg_include"/>
-  <property name="AWG_INPUT_HOME_GFDL" value="/home/$USER/ncrc/$(FRE_STEM)/xml_$(AWG_VERSION)_donner_my25_turb_mf/awg_include"/>
+  <!--property name="AWG_INPUT_HOME_GAEA" value="$HOME/$(FRE_STEM)/xml_$(AWG_VERSION)_donner_my25_turb_mf/awg_include"/>
+  <property name="AWG_INPUT_HOME_GFDL" value="/home/$USER/ncrc/$(FRE_STEM)/xml_$(AWG_VERSION)_donner_my25_turb_mf/awg_include"/-->
+  <property name="AWG_INPUT_HOME_GAEA" value="$HOME/$(FRE_STEM)/xml_$(AWG_VERSION)_$(FMS_COMP_NAME)/awg_include"/>
+  <property name="AWG_INPUT_HOME_GFDL" value="/home/$USER/ncrc/$(FRE_STEM)/xml_$(AWG_VERSION)_$(FMS_COMP_NAME)/awg_include"/>
   <property name="REFERENCE_ROOT" value="/lustre/f2/dev/Thomas.Robinson/reference_files/$(RELEASE)/cmip6"/>
 
 <!--
@@ -112,12 +115,22 @@ properties below.
   <property name="ANA_AMIP_END"   value="1981"/>
   <property name="ANA_AMIP_LEN"   value="2yr"/>
 -->
+<!--
+original setting
   <property name="EXP_AMIP_START" value="1979"/>
   <property name="EXP_AMIP_END"   value="1984"/>
   <property name="EXP_AMIP_LEN"   value="6"/>
   <property name="ANA_AMIP_START" value="1980"/>
   <property name="ANA_AMIP_END"   value="1984"/>
   <property name="ANA_AMIP_LEN"   value="5yr"/>
+-->
+<!-- 2-year AMIP run -->
+  <property name="EXP_AMIP_START" value="1979"/>
+  <property name="EXP_AMIP_END"   value="1981"/>
+  <property name="EXP_AMIP_LEN"   value="3"/>
+  <property name="ANA_AMIP_START" value="1980"/>
+  <property name="ANA_AMIP_END"   value="1981"/>
+  <property name="ANA_AMIP_LEN"   value="2yr"/>
 
   <property name="CVDP_startyear" value="$(EXP_AMIP_START)"/>
 
@@ -494,6 +507,39 @@ module load gcp
       </csh>
     </platform>
 
+    <platform name="ncrc4.intel18">
+      <freVersion>$(FRE_VERSION)</freVersion>
+      <compiler type="intel" version="18.0.6.288" />
+<!-- Please make sure to change "YOURGROUPLETTER" to your group, such as b, f, g, m, o... -->
+      <project>$(GFDL_YGL)</project>
+      <directory stem="$(FRE_STEM)">
+         <src>$HOME/$(stem)/$(name)/src</src>
+         <scripts>$HOME/$(stem)/xml_$(AWG_VERSION)_donner/scripts/$(platform)-$(target)</scripts>
+         <stdout>$SCRATCH/$USER/$(stem)/$(FMS_COMP_EXP)/$(name)/$(platform)-$(target)/stdout</stdout>
+         <state>$DEV/$USER/$(stem)/$(FMS_COMP_EXP)/$(name)/$(platform)-$(target)/state</state>
+         <archive>$DEV/$USER/$(stem)/$(FMS_COMP_EXP)/$(name)/$(platform)-$(target)</archive>
+         <postProcess>$DEV/$USER/$(stem)/$(FMS_COMP_EXP)/$(name)/$(platform)-$(target)/pp</postProcess>
+         <analysis>$DEV/$USER/$(stem)/$(FMS_COMP_EXP)/$(name)/$(platform)-$(target)/analysis</analysis>
+      </directory>
+      <property name="F2003_FLAGS"         value=" -DINTERNAL_FILE_NML -g  "/>
+      <property name="AWG_INPUT_HOME"      value="$(AWG_INPUT_HOME_GAEA)"/>
+      <property name="AWG_ARCHIVE_ROOT"    value="/lustre/f2/pdata/gfdl/gfdl_M/cjg/archive/mdt"/>
+      <property name="CMIP6_ARCHIVE_ROOT"  value="/lustre/f2/pdata/gfdl/cmip6/datasets"/>
+      <property name="H1G_ARCHIVE_ROOT"    value="/lustre/f2/pdata/gfdl/gfdl_M/Huan.Guo/archive/mdt"/>
+      <property name="NCORE_PER_NODE"      value="36"/>
+      <csh><![CDATA[
+        module load git
+#
+       setenv KMP_STACKSIZE 512m
+       setenv NC_BLKSZ 1M
+       setenv OMP_SCHEDULE "static,1"
+
+      ]]></csh>
+    </platform>
+
+    <platform name="gfdl.ncrc4-intel18">
+      <xi:include xpointer="xpointer(//setup/platform[@name='gfdl.ncrc3-intel']/node())" />
+    </platform>
 
   </setup>
 
@@ -2743,6 +2789,9 @@ Experiment name = $(name)
       <regression name="basic">
           <xi:include xpointer="xpointer(//freInclude[@name='c96_216_basic']/node())"/>
       </regression>
+      <regression name="debug_30d">
+          <xi:include xpointer="xpointer(//freInclude[@name='c96_432_debug_30d']/node())"/>
+      </regression>
       <regression name="rts">
           <xi:include xpointer="xpointer(//freInclude[@name='c96_216_rts']/node())"/>
           <xi:include xpointer="xpointer(//freInclude[@name='c96_384_rts']/node())"/>
@@ -3578,6 +3627,178 @@ Mellor-Yamada experiment; same as c96L33_am4p0_donner_my25 but vert_turb_driver_
     </input>
   </experiment>
 
+  <experiment name="b00-c96L33_am4p0_donner" inherit="c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .true.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+ UP_NUM  =          10,
+ DO_MF_MICRO     = F,
+ Z_PBL_MIN       =   100.000000000000     ,
+ W_STAR_MIN      =  0.100000000000000     ,
+ ENT0    =  0.200000000000000     ,
+ ENT_LENGTH      =   30.0000000000000     ,
+ Z0_OVER_Z_PBL   =  0.100000000000000     ,
+ PWMIN   =   1.00000000000000     ,
+ PWMAX   =   3.00000000000000     ,
+ AW      =   1.00000000000000     ,
+ BW      =   1.50000000000000     ,
+ FILTER_MASSFLUX = none                                    ,
+ CHOOSE_RETURN   = u_v_t_q             ,
+ W_MAX   =   2.00000000000000     ,
+ QT_EXCESS_MAX   =  1.000000000000000E-003,
+ THV_EXCESS_MAX  =  0.500000000000000     ,
+ OPTION_MF_ENV_HALF      = upwind_env          ,
+ USE_TAU_MF      = T,
+ DO_WRITEOUT_PROFILE     = F,
+ DO_PRINTOUTS    = F,
+ DO_STOP_RUN     = F,
+ DO_CHECK_TRC_RLZBILITY  = T
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b01-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b02-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+         filter_massflux = "if_moist_allmf_off"
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b02x-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .true.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b02y-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b02b-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b02c-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b02a-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .false.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b02z-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .true.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="c01-c96L33_am4p0_moist_down_tauF" inherit="c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .false.,
+        do_mass_flux_after_vdiff  = .false.,
+        use_tau = .false.
+        do_stop_run = .false.
+        do_moist_processes_up = .false.
+        do_moist_processes_down = .true.
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="c02-c96L33_am4p0_moist_up_tauF" inherit="c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .false.,
+        do_mass_flux_after_vdiff  = .false.,
+        use_tau = .false.
+        do_stop_run = .false.
+        do_moist_processes_up = .true.
+        do_moist_processes_down = .false.
+      </namelist>
+    </input>
+  </experiment>
+
   <experiment name="x02-c96L33_am4p0_donner_qmf_allmf_off" inherit="a01-c96L33_am4p0_donner_qmf_allmf_off"   >
     <input>
       <namelist name="mass_flux_nml">
@@ -3703,6 +3924,67 @@ Mellor-Yamada experiment; same as c96L33_am4p0_donner_my25 but vert_turb_driver_
   </experiment>
 
   <experiment name="x09-c96L33_am4p0_donner_qmf_allmf_off_diag" inherit="x06-c96L33_am4p0_donner_qmf_allmf_off_diag"   >
+  </experiment>
+
+  <experiment name="x10-c96L33_am4p0_donner_qmf_allmf_off_diag" inherit="x06-c96L33_am4p0_donner_qmf_allmf_off_diag"   >
+  </experiment>
+
+  <experiment name="x11-c96L33_am4p0_donner_qmf_allmf_off_diag" inherit="x06-c96L33_am4p0_donner_qmf_allmf_off_diag"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .false.,
+        do_mass_flux_after_vdiff  = .false.,
+        do_stop_run = .false.
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="x12-c96L33_am4p0_donner_qmf_allmf_off_diag" inherit="x06-c96L33_am4p0_donner_qmf_allmf_off_diag"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .false.,
+        do_mass_flux_after_vdiff  = .false.,
+        do_stop_run = .false.
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="x13-c96L33_am4p0_donner_qmf_allmf_off_diag" inherit="x06-c96L33_am4p0_donner_qmf_allmf_off_diag"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .false.,
+        do_mass_flux_after_vdiff  = .false.,
+        do_stop_run = .true.
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="x14-c96L33_am4p0_donner_test_writeout" inherit="x06-c96L33_am4p0_donner_qmf_allmf_off_diag"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .false.,
+        do_mass_flux_after_vdiff  = .false.,
+        do_stop_run = .false.
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="x21_writeout-c96L33_am4p0_moist_up_tauF" inherit="c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .false.,
+        do_mass_flux_after_vdiff  = .false.,
+        use_tau = .false.
+        do_stop_run = .false.
+        do_moist_processes_up = .true.
+        do_moist_processes_down = .false.
+      </namelist>
+    </input>
   </experiment>
 
 </experimentSuite>
