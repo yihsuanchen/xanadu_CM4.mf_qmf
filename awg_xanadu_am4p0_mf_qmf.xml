@@ -115,23 +115,38 @@ properties below.
   <property name="ANA_AMIP_END"   value="1981"/>
   <property name="ANA_AMIP_LEN"   value="2yr"/>
 -->
-<!--
-original setting
+
   <property name="EXP_AMIP_START" value="1979"/>
   <property name="EXP_AMIP_END"   value="1984"/>
   <property name="EXP_AMIP_LEN"   value="6"/>
   <property name="ANA_AMIP_START" value="1980"/>
   <property name="ANA_AMIP_END"   value="1984"/>
   <property name="ANA_AMIP_LEN"   value="5yr"/>
+
+<!--
+  <property name="EXP_AMIP_START" value="1979"/>
+  <property name="EXP_AMIP_END"   value="1999"/>
+  <property name="EXP_AMIP_LEN"   value="21"/>
+  <property name="ANA_AMIP_START" value="1980"/>
+  <property name="ANA_AMIP_END"   value="1999"/>
+  <property name="ANA_AMIP_LEN"   value="20yr"/>
+
+  <property name="EXP_AMIP_START" value="1979"/>
+  <property name="EXP_AMIP_END"   value="2003"/>
+  <property name="EXP_AMIP_LEN"   value="25"/>
+  <property name="ANA_AMIP_START" value="1980"/>
+  <property name="ANA_AMIP_END"   value="2003"/>
+  <property name="ANA_AMIP_LEN"   value="24yr"/>
 -->
-<!-- 2-year AMIP run -->
+
+<!-- 2-year AMIP run 
   <property name="EXP_AMIP_START" value="1979"/>
   <property name="EXP_AMIP_END"   value="1981"/>
   <property name="EXP_AMIP_LEN"   value="3"/>
   <property name="ANA_AMIP_START" value="1980"/>
   <property name="ANA_AMIP_END"   value="1981"/>
   <property name="ANA_AMIP_LEN"   value="2yr"/>
-
+-->
   <property name="CVDP_startyear" value="$(EXP_AMIP_START)"/>
 
   <!-- Post-processing chunk length -->
@@ -3767,6 +3782,135 @@ Mellor-Yamada experiment; same as c96L33_am4p0_donner_my25 but vert_turb_driver_
       </namelist>
       <namelist name="mass_flux_nml">
          filter_massflux = "if_moist_allmf_off"
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b02g-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .true.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+         do_stop_run = T
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b02d-c96L33_am4p0_qmf_allmf_off" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ do_stoch_entrain = F
+ ent_fixed = 5e-3
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b03-c96L33_am4p0_qmf_allmf_off_MFent500" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ do_stoch_entrain = F
+ ent_fixed = 5e-3
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b04-c96L33_am4p0_qmf_allqmf_off_MFent500" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, excluding those updraft effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmoist_off"
+ do_stoch_entrain = F
+ ent_fixed = 5e-3
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="x21-c96L33_am4p0_qmf_allmf_MFent500" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ option_stoch_entrain = "fixed"
+ ent_fixed = 5e-3
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="x31-c96L33_am4p0_qmf_allmf_expMF_ignpoi" inherit="b00-c96L33_am4p0_donner"   >
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ option_stoch_entrain = "ignpoi"
+ ent_fixed = 5e-3
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
       </namelist>
     </input>
   </experiment>
