@@ -3826,6 +3826,7 @@ Mellor-Yamada experiment; same as c96L33_am4p0_donner_my25 but vert_turb_driver_
 am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
 The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
 The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
     </description>
     <input>
       <namelist name="physics_driver_nml">
@@ -3847,11 +3848,40 @@ The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
     </input>
   </experiment>
 
+  <experiment name="b03x-c96L33_am4p0_qmf_allmf_off_MFent500" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ do_stoch_entrain = F
+ ent_fixed = 5e-3
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ CHOOSE_RETURN   = t_q             ,
+      </namelist>
+    </input>
+  </experiment>
+
   <experiment name="b04-c96L33_am4p0_qmf_allqmf_off_MFent500" inherit="b00-c96L33_am4p0_donner"   >
     <description>
 am4p0 + dry MF, assuming if condensation happens in any updrafts, excluding those updraft effects.
 The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
 The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
     </description>
     <input>
       <namelist name="physics_driver_nml">
@@ -4127,6 +4157,341 @@ The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
         do_stop_run = .false.
         do_moist_processes_up = .true.
         do_moist_processes_down = .false.
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0x-c96L33_am4p0_qmf_allmf_off_MFpos" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ do_stoch_entrain = T
+ option_stoch_entrain = "Poisson" 
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0y-c96L33_am4p0_qmf_allmf_off_MFpos_entMin" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ do_stoch_entrain = T
+ option_stoch_entrain = "Poisson" 
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ ENT_MF_MIN = 1.e-4
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0y-c96L33_am4p0_qmf_allmf_off_MFpos_entMin01" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+
+set minimum MF entrainment rate to 1/km. Slow down still.
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ do_stoch_entrain = T
+ option_stoch_entrain = "Poisson" 
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ ENT_MF_MIN = 1.e-3
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0y-c96L33_am4p0_qmf_allmf_off_MFpos_entMin03" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+
+set minimum MF entrainment rate to 3/km. Slow down still.
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ do_stoch_entrain = T
+ option_stoch_entrain = "Poisson" 
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ ENT_MF_MIN = 3.e-3
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0y-c96L33_am4p0_qmf_allmf_off_MFpos_entMin05" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+
+set minimum/maximum MF entrainment rate to 5/km. Slow down still.
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ do_stoch_entrain = T
+ option_stoch_entrain = "Poisson" 
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ ENT_MF_MIN = 5.e-3
+ ENT_MF_MAX = 5.e-3
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0y-c96L33_am4p0_qmf_allmf_off_MF_entFIX05" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+
+Fix MF entrainment rate to 5/km. OK. 
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ do_stoch_entrain = F
+ option_stoch_entrain = "fixed" 
+ ENT_MF_MIN = 5.e-3
+ ENT_MF_MAX = 5.e-3
+ ent_fixed = 5.e-3
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0y-c96L33_am4p0_qmf_allmf_off_MFmean_entMF05" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+
+set Poisson_mean and fixed entrainment rate to 5/km. OK. 
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ do_stoch_entrain = T
+ option_stoch_entrain = "Poisson_mean" 
+ ENT_MF_MIN = 5.e-3
+ ENT_MF_MAX = 5.e-3
+ ent_fixed = 5.e-3
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0y-c96L33_am4p0_qmf_allmf_off_MFran_entMF05" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+
+set minimum/maximum MF entrainment rate to 5/km. Slow down still.
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ do_stoch_entrain = T
+ option_stoch_entrain = "random_Poisson" 
+ ENT_MF_MIN = 5.e-3
+ ENT_MF_MAX = 5.e-3
+ ent_fixed = 5.e-3
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0y-c96L33_am4p0_qmf_allmf_off_MFign_entMF05" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+
+set minimum/maximum MF entrainment rate to 5/km. Slow down still.
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ option_stoch_entrain = "ignpoi" 
+ ENT_MF_MIN = 5.e-3
+ ENT_MF_MAX = 5.e-3
+ ent_fixed = 5.e-3
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0z-c96L33_am4p0_qmf_allmf_off_MFmean_entMF05" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+
+set Poisson_mean and fixed entrainment rate to 5/km. OK. 
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ option_stoch_entrain = "Poisson_mean" 
+ ENT_MF_MIN = 5.e-3
+ ENT_MF_MAX = 5.e-3
+ ent_fixed = 5.e-3
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b0z-c96L33_am4p0_qmf_allmf_off_MFpos_entMF05" inherit="b00-c96L33_am4p0_donner"   >
+    <description>
+am4p0 + dry MF, assuming if condensation happens in any updrafts, no MF effects.
+The entrainment rate is fixed at 5 (1/km) for all updrafts, which has a good results in dry SCM tests.
+The MF program is mass_flux.F90.xanadu.dry_mf.v5.2
+The physics_driver program is physics_driver.F90.xanadu.mf.v3.0.before_after_vdiff
+
+set Poisson_mean and fixed entrainment rate to 5/km. OK. 
+    </description>
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = .false.,
+        do_mass_flux_before_vdiff = .true.,
+        do_mass_flux_after_vdiff  = .false.,
+      </namelist>
+      <namelist name="mass_flux_nml">
+         filter_massflux = "if_moist_allmf_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ option_stoch_entrain = "Poisson" 
+ ENT_MF_MIN = 5.e-3
+ ENT_MF_MAX = 5.e-3
+ ent_fixed = 5.e-3
       </namelist>
     </input>
   </experiment>
