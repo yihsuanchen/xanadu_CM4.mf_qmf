@@ -540,7 +540,7 @@ integer   :: nt                       ! total no. of tracers
 integer   :: ntp                      ! total no. of prognostic tracers
 !integer   :: ncol                     ! number of stochastic columns
 integer   ::  nsphum                  ! index for specific humidity tracer
- 
+integer   :: nqa, nql, nqi, nqn, nqni ! yhc  
 
 logical   :: step_to_call_cosp
 logical   :: doing_prog_clouds
@@ -1067,6 +1067,12 @@ real,    dimension(:,:,:),    intent(out),  optional :: diffm, difft
       call mpp_clock_begin ( mass_flux_init_clock )
       call mass_flux_init  (lonb, latb, axes, Time, id, jd, kd)
       call mpp_clock_end ( mass_flux_init_clock )
+
+      nqa = Physics%control%nqa
+      nql = Physics%control%nql
+      nqi = Physics%control%nqi
+      nqn = Physics%control%nqn
+      nqni = Physics%control%nqni   ! nqni is not supported by SCM yet  
 !--> yi-hsuan, initialize mass_flux module 
 
 !---------------------------------------------------------------------
@@ -2342,8 +2348,8 @@ real,  dimension(:,:,:), intent(out)  ,optional :: diffm, difft
                                do_mass_flux_diagnostic, do_EDMF_in_mass_flux,                &
                                p_half, p_full, z_half, z_full,          &
                                u_star, b_star, q_star, z_pbl,           &
-                               u, v, t, r(:,:,:,1),                     &
-                               udt, vdt, tdt, rdt(:,:,:,1),             &
+                               u, v, t, r(:,:,:,nsphum), r(:,:,:,nql), r(:,:,:,nqi),                    &
+                               udt, vdt, tdt, rdt(:,:,:,nsphum), rdt(:,:,:,nql), rdt(:,:,:,nqi),            &
                                diff_t = diff_t(is:ie,js:je,:), diff_m = diff_m(is:ie,js:je,:), &
                                diff_t_to_vdiff = diff_t_to_vdiff(is:ie,js:je,:), diff_m_to_vdiff  = diff_m_to_vdiff(is:ie,js:je,:) )
   
@@ -3341,8 +3347,10 @@ real,dimension(:,:),    intent(inout)             :: gust
                                do_mass_flux_diagnostic, do_EDMF_in_mass_flux,   &
                                p_half, p_full, z_half, z_full,          &
                                u_star, b_star, q_star, z_pbl,           &
-                               u, v, t, r(:,:,:,1),                     &
-                               udt, vdt, tdt, rdt(:,:,:,1) )
+                               u, v, t, r(:,:,:,nsphum), r(:,:,:,nql), r(:,:,:,nqi),                    &
+                               udt, vdt, tdt, rdt(:,:,:,nsphum), rdt(:,:,:,nql), rdt(:,:,:,nqi) )
+                               !u, v, t, r(:,:,:,1),                     &
+                               !udt, vdt, tdt, rdt(:,:,:,1) )
 
        !------- output t tendency after mass flux (units: K/s) at full level -------
        if ( id_tdt_after_mf > 0) then
