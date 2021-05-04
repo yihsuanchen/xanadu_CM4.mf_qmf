@@ -16,6 +16,8 @@ module mass_flux_mod
 !                         correct the bad loop of mass_flux_tendencies (this in is i,j loop)
 !    2020/09/28  ver 5.1  Replace Poisson program
 !    2020/10/10  ver 5.2  Add fixed entrainment rate option
+!    .....                Add a Poisson program, ignpoi
+!    2020/12/04  ver 7.0  Add a Poisson program using AM4 random number generator, Poisson_knuth
 !=======================================================================
 
 use           mpp_mod, only: input_nml_file
@@ -194,6 +196,7 @@ logical :: do_check_trc_rlzbility = .true. ! check tracer realizability
 !logical :: do_stoch_entrain       = .true. ! do stochastic entrainmentm otherwise the entrainment rate is fixed by ent_fixed
 character*20 :: option_stoch_entrain = "Poisson"
 !character*20 :: option_stoch_entrain = "random_Poisson"
+integer :: option_rng = 0  ! in Poisson_knuth, 0 - using Fortran intrisic random_number, 1 - using AM4 RNG
 
 logical :: use_tau_mf = .true.            ! .true. use current u,v,t,q in the mass_flux program
                                           ! else   use updated u,v,t,q, i.e. u,v,t,q plus the tendencies times dt
@@ -214,7 +217,7 @@ namelist / mass_flux_nml / up_num, do_mf_micro, &
                            w_max, qt_excess_max, thv_excess_max, &
                            option_MF_env_half, &
                            use_tau_mf,   &
-                           option_stoch_entrain, ent_fixed, ent_mf_min, ent_mf_max, &
+                           option_stoch_entrain, ent_fixed, ent_mf_min, ent_mf_max, option_rng, &
                            option_MF_numerics, option_ED_numerics, option_surface_flux, do_include_surf_flux, do_ED_in_mass_flux, &      
                            do_writeout_profile, do_printouts, do_stop_run, do_check_trc_rlzbility
          
@@ -720,9 +723,6 @@ end subroutine mass_flux_driver
 !###########################################
 ! subroutine mass_flux
 !
-! To-do (as of 06/21/2020)
-!   1. Use ice-liquid water potential temperature, instead of virtual temperature
-!
 ! Purpose:
 !   (1) Compute updraft properties based on the grid-scale input variables, such as uu,vv,tt,qq, etc.
 !   (2) Compute subgrid mixing from all updrafts, i.e. <w'phi'>
@@ -774,7 +774,7 @@ end subroutine mass_flux_driver
 subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
                        p_half, p_full, z_half, z_full,                       & 
                        u_star, b_star, q_star, z_pbl,                        &
-                       uu, vv, tt, qq,                                       &
+                       uu, vv, tt, qq, ql, qi,                               &
                        is_mass_flux,                                         &
                        sum_up_a, sum_up_aw, sum_up_awu, sum_up_awv,          &
                        sum_up_awthv, sum_up_awthli, sum_up_awqt, avg_up_w, sum_up_massflux, &
@@ -794,6 +794,8 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
 !    vv          -  meridional wind         (m/s)   , dimension (nlon, nlat, nlay)
 !    tt          -  temperature             (K)     , dimension (nlon, nlat, nlay)
 !    qq          -  specific humidity       (kg/kg) , dimension (nlon, nlat, nlay)  ,see note 1 below
+!    ql          -  cloud liquid specific humidity       (kg/kg) , dimension (nlon, nlat, nlay) 
+!    qi          -  cloud ice specific humidity       (kg/kg) , dimension (nlon, nlat, nlay) 
 !    z_pbl       -  boundary layer depth    (m)     , dimension (nlon, nlat)        ,see note 2 below
 !    u_star      -  friction velocity       (m/s)   , dimension (nlon, nlat)        ,see note 2 below
 !    b_star      -  buoyancy scale          (m/s^2) , dimension (nlon, nlat)        ,see note 2 below
@@ -831,7 +833,7 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
   type(time_type), intent(in)           :: Time_next             
   real,    intent(in), dimension(:,:,:) :: p_full, z_full  
   real,    intent(in), dimension(:,:,:) :: p_half, z_half  
-  real,    intent(in), dimension(:,:,:) :: uu, vv, tt, qq  
+  real,    intent(in), dimension(:,:,:) :: uu, vv, tt, qq, ql, qi  
   real,    intent(in), dimension(:,:)   :: z_pbl, u_star, b_star, q_star
 
   real,    intent(in), optional, dimension(:,:,:) :: diff_t, diff_m
@@ -975,6 +977,9 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
 
   integer, dimension(2) :: seedmf
 
+  integer, parameter :: rx = 500
+  real :: rr(rx)
+
   real :: water_frac ! liquid water fraction in updraft condensed water (0-1)
 
   !--- parameters
@@ -1025,11 +1030,13 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
   tv (:,:,:)=tt(:,:,:)*(qq(:,:,:)*d608+1.0)
   thv(:,:,:)=tv(:,:,:)*ape(:,:,:)  
 
-  thli(:,:,:)=th(:,:,:)   ! no cloud liquid/ice water from input, so thli equals to th
+  !thli(:,:,:)=th(:,:,:)   ! no cloud liquid/ice water from input, so thli equals to th
   !full expression of thli, thli(:,:,:)=th(:,:,:) - (hlv*qc(:,:,:)+hlf*qi(:,:,:)) /cp_air * ape(:,:,:)
+  thli(:,:,:) = th(:,:,:) - (hlv*ql(:,:,:)+hlf*qi(:,:,:)) /cp_air * ape(:,:,:)
 
 !--- set total water mixing ratio  
-  qt(:,:,:) = qq(:,:,:)  
+  !qt(:,:,:) = qq(:,:,:)  
+  qt(:,:,:) = qq(:,:,:)+ql(:,:,:)+qi(:,:,:)  
 
 !  !flag111 - set specific humidity at the lowest level
 !  if (rh_flag111.gt.0.) then
@@ -1128,6 +1135,8 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
 
   is_moist_updraft = .false.
 
+  call get_random_number_streams ( is, js, Time_next, tt(:,:,kx), streams)
+
 !=====================================
 !
 !   compute the updraft mass flux
@@ -1196,10 +1205,12 @@ if (b_star(i,j) .gt. 0.) then   ! use b_star here because u_star is always posit
               !*** Strangely, the mass_flux ran successfully, but the flux_down_from_atmos stalled.
               !*** More strangely, the 8-day and 30-day regression tests ran successfully
               !**************************************************
-              call random_Poisson(dz_rev(k)/ent_length, .true., ent_stoch)  
-              !ent_stoch = 1.
+              ENTf(k,n) = dz_rev(k)/ent_length
+              ENTf(k,n) = max( ENTf(k,n), 0.)
+              call random_Poisson(ENTf(k,n), .true., ent_stoch)  
               ent(n,k)  = (ent0 / dz_rev(k)) * real(ent_stoch)
-              !print*,'n,k,ent_stoch,ent',n,k,ent_stoch,ent(n,k)
+              !prpint*,'n,k,ent_stoch,ent',n,k,ent_stoch,ent(n,k)
+
             end do 
           end do
 
@@ -1211,6 +1222,7 @@ if (b_star(i,j) .gt. 0.) then   ! use b_star here because u_star is always posit
             do n=1,nx
               do k=1,kx
                 ENTf(k,n) = dz_rev(k)/ent_length
+                ENTf(k,n) = max( ENTf(k,n), 0.)
               end do 
             end do
     
@@ -1223,6 +1235,28 @@ if (b_star(i,j) .gt. 0.) then   ! use b_star here because u_star is always posit
                 ent(n,k)  = (ent0 / dz_rev(k)) * real(ENTi(k,n))
          !print*,'n,k,ENTi,ent,ent0/dz',n,k,ENTi(k,n),ent(n,k),ent0 / dz_rev(k)
               end do 
+            end do
+
+        !--- use subroutine Poisson_knuth
+        elseif (option_stoch_entrain.eq."Poisson_knuth") then
+            !------ set entrainment coefficients for each updraft ------
+            !         ref: Eq (14), Suselj et al. (2019b)  
+            !         The random number generator that Kay Suselj used in the GEOS model.
+            do n=1,nx
+              do k=1,kx
+                ENTf(k,n) = dz_rev(k)/ent_length
+              end do
+            end do
+
+            if (option_rng == 0) call random_number(rr)
+            if (option_rng == 1) call getRandomNumbers (streams(i,j),rr)
+            call Poisson_knuth (kx, nx, rx, rr, ENTf, ENTi)
+
+            do n=1,nx
+              do k=1,kx
+                ent(n,k)  = (ent0 / dz_rev(k)) * real(ENTi(k,n))
+         !print*,'n,k,ENTi,ent,ent0/dz',n,k,ENTi(k,n),ent(n,k),ent0 / dz_rev(k)
+              end do
             end do
 
         !--- use mean of the Poisson distribution
@@ -1247,7 +1281,9 @@ if (b_star(i,j) .gt. 0.) then   ! use b_star here because u_star is always posit
                 !ENTf(k,n) = dz_rev(k)/ent_length
                 !ENTi(k,n) = ignpoi(ENTf(k,n))
                 ENTf_k4(k,n) = dz_rev(k)/ent_length
-                ENTi(k,n) = ignpoi(ENTf_k4(k,n))
+                ENTf_k4(k,n) = max( ENTf_k4(k,n), 0.)
+                ENTi   (k,n) = ignpoi(ENTf_k4(k,n))
+
 !print*,'n,k,ENTf,ENTi',n,k,ENTf_k4(k,n),ENTi(k,n)
                 ent(n,k)  = (ent0 / dz_rev(k)) * real(ENTi(k,n))
               end do
@@ -1256,32 +1292,13 @@ if (b_star(i,j) .gt. 0.) then   ! use b_star here because u_star is always posit
         elseif (option_stoch_entrain.eq."fixed") then
           ent(1:nx,1:kx) = ent_fixed
 
-!        elseif (option_stoch_entrain.eq."testtest") then
-!            !ent(1:nx,1:kx) = ent_fixed
-!
-!            do n=1,nx
-!              do k=1,kx
-!                ENTf(k,n) = dz_rev(k)/ent_length
-!              end do 
-!            end do
-!    
-!            seedmf(1) = 1000000 * ( 100*thli(i,j,kx)   - INT(100*thli(i,j,kx)  )) 
-!            seedmf(2) = 1000000 * ( 100*thli(i,j,kx-1) - INT(100*thli(i,j,kx-1)))
-!            call Poisson(1,nx,1,kx, ENTf, ENTi, seedmf)
-!    
-!            do n=1,nx
-!              do k=1,kx
-!                ent(n,k)  = (ent0 / dz_rev(k)) * real(ENTi(k,n))
-!              end do 
-!            end do
-
         !--- unsupported option_stoch_entrain
         else
 
           call error_mesg(' mass_flux_mod',  &
                           ' unsupported option_stoch_entrain', &
                           FATAL )
-        end if  ! of option_stoch_entrain
+        end if  ! option_stoch_entrain
 
 
         !--- unsupported option_stoch_entrain
@@ -1338,6 +1355,12 @@ endif
 !write(6,*) 'qqq, streams',streams
 !  call getRandomNumbers (streams(1,1),randomNumbers)
 !write(6,*) 'qqq, randomNumbers',randomNumbers
+
+!if (i == 1 .and. j == 1) then
+!  write(6,*),'i,j,ENTi, ',i,j,ENTi(30,:)
+!elseif (i == 3 .and. j == 3) then
+!  write(6,*),'i,j,ENTi, ',i,j,ENTi(30,:)
+!endif
 
 !--------------------------------------
 ! set initial conditions for updrafts
@@ -1454,7 +1477,7 @@ endif
           !flag111 - set water_frac=1 at this moment
           water_frac = 1. 
           call compute_thv_qc( up_qt(n,k+1), up_thli(n,k+1), pfull_rev(k+1), water_frac, &
-                               up_thv(n,k+1),up_qq(n,k+1), up_qc(n,k+1), up_ql(n,k+1), up_qi(n,k+1))
+                               up_thv(n,k+1),up_qq(n,k+1), up_qc(n,k+1), up_ql(n,k+1), up_qi(n,k+1), filter_massflux)
 
           !--- compute updraft vertical kinetic energy. Ref: Eq (B12), Suselj et al. (2019b)
           if (option_updraft_level.eq."full") then
@@ -1530,6 +1553,10 @@ endif
            up_a(n,:) = 0.
          end if
        enddo
+
+     !--- no condensation is allowed in plumes, so do nothing
+     else if (filter_massflux .eq. "no_cond") then
+       n=1
 
      !--- do not set any filter
      else if (filter_massflux .eq. "none") then
@@ -3560,7 +3587,7 @@ end subroutine mass_flux_tendencies
 !!#######################################################################
 !
 subroutine compute_thv_qc (qt, thli, p, water_frac, &
-                           thv, qq, qc, ql, qi,         &
+                           thv, qq, qc, ql, qi,  filter_massflux,       &
                            qsat)
   !---------------------------------------
   ! Description:
@@ -3577,6 +3604,8 @@ subroutine compute_thv_qc (qt, thli, p, water_frac, &
       thli,            &   ! ice-liquid water potential temperature  	                     , units: K
       p,               &   ! pressure                                       	             , units: Pa
       water_frac           ! cloud liquid water fraction                         	     , units: fraction
+
+  character*40, intent(in) :: filter_massflux
 
   real, intent(in), optional :: & 
       qsat                 ! optional: the saturation specific humidity can be an input      , units: kg/kg
@@ -3617,7 +3646,7 @@ subroutine compute_thv_qc (qt, thli, p, water_frac, &
 
   !--- initialize return variables
   thv = 0.
-  qc  = 0.
+  qq  = 0.
   qc  = 0.
   ql  = 0.
   qi  = 0.
@@ -3625,38 +3654,48 @@ subroutine compute_thv_qc (qt, thli, p, water_frac, &
  !--- compute Exner function, (P/P0)^(Rd/cp) 
   exn=(p*p00inv)**kappa  
 
-  !--- iterate to get qc
-  do i=1,niter
+  !--- no condensation is allowed in plume
+  if (filter_massflux.eq."no_cond") then
+    qq  = qt                     ! no condensation, so water vapor amount equals to total water
+    thv = thli * (qq*d608+1.0)   ! no condensation, so th = thli and thv = thlit * (0.16q+1)
 
-    !--- compute "(L_l*q_l + L_i*q_i) / cp" term in the formula of ice-liquid water potential temperature
-    hlvf_cp = (hlv_cp*water_frac + hlf_cp*(1.-water_frac))
+  !--- condensation is allowed
+  else
+    !--- iterate to get qc
+    do i=1,niter
+  
+      !--- compute "(L_l*q_l + L_i*q_i) / cp" term in the formula of ice-liquid water potential temperature
+      hlvf_cp = (hlv_cp*water_frac + hlf_cp*(1.-water_frac))
+      qc_hlvf_cp = qc * hlvf_cp
+  
+      !--- compute temperature
+      t  = exn*(thli+qc_hlvf_cp)     
+  
+      !--- compute saturation specific humidity
+      if (present(qsat)) then
+        qs = qsat
+      else
+        qs = qs_edmf(t,p,water_frac)   
+      endif
+  
+      !--- compute qc, and qc_old
+      qc_old = qc
+      qc    = max(0.5*qc+0.5*(qt-qs),0.)
+      if (abs(qc-qc_old)<diff) exit   ! compare previous qc and current qc values
+    end do
+  
+    !--- get the final value of t, qs, qc, and thv
     qc_hlvf_cp = qc * hlvf_cp
+    t = exn*(thli+qc_hlvf_cp)
+  
+    qq  = max(qt-qc,0.)    ! note that qq is very close to qs(t), but not exactly the same due to numerics
+    ql  = qc * water_frac
+    qi  = qc * (1.-water_frac)
+  
+    thv = (thli+qc_hlvf_cp/exn)*(1.+qt*(rv_rd-1.)-rv_rd*qc)  ! Kay's formula, but I don't understand why
 
-    !--- compute temperature
-    t  = exn*(thli+qc_hlvf_cp)     
+  endif  ! end if of filter_massflux
 
-    !--- compute saturation specific humidity
-    if (present(qsat)) then
-      qs = qsat
-    else
-      qs = qs_edmf(t,p,water_frac)   
-    endif
-
-    !--- compute qc, and qc_old
-    qc_old = qc
-    qc    = max(0.5*qc+0.5*(qt-qs),0.)
-    if (abs(qc-qc_old)<diff) exit   ! compare previous qc and current qc values
-  end do
-
-  !--- get the final value of t, qs, qc, and thv
-  qc_hlvf_cp = qc * hlvf_cp
-  t = exn*(thli+qc_hlvf_cp)
-
-  qq  = max(qt-qc,0.)    ! note that qq is very close to qs(t), but not exactly the same due to numerics
-  ql  = qc * water_frac
-  qi  = qc * (1.-water_frac)
-
-  thv = (thli+qc_hlvf_cp/exn)*(1.+qt*(rv_rd-1.)-rv_rd*qc)  ! Kay's formula, but I don't understand why
   !tt1 = t*(qq*d608+1.0)/exn                                ! standard virtual potential temperature formula
   !print*,'thv_Kay,thv_d608,diff',thv,tt1,thv-tt1  ! the difference is very small
 
@@ -5156,13 +5195,13 @@ REAL(DP), DIMENSION(6) :: coef = (/76.18009172947146_dp,&
 -1.231739572450155_dp,0.1208650973866179e-2_dp,&
 -0.5395239384953e-5_dp/)
 !call assert(xx > 0.0, ’gammln_s arg’)
-if (xx .le. 0.) print *,'gammaln fails'
+!if (xx .le. 0.) print *,'gammaln fails'
 
 !<-- yhc
-if (xx .le. 0.) then
-  write(6,*),'ggg, gammaln fails, ',xx
-  if (do_stop_run) call error_mesg(' mass_flux_mod',' gammaln fails', FATAL )
-endif
+!if (xx .le. 0.) then
+!  write(6,*),'ggg, gammaln fails, ',xx
+!  if (do_stop_run) call error_mesg(' mass_flux_mod',' gammaln fails', FATAL )
+!endif
 !--> yhc
 
 x=xx
@@ -10288,5 +10327,210 @@ subroutine trstat ( pdf, parin, av, var )
 
   return
 end
+
+!#######################################################################
+
+subroutine Poisson_knuth (kx, nx, rx, rr, ENTf, ENTi)
+!----------
+! Desecription:
+!   a Poisson random number generator attributed to Donald Knuth:
+!
+! Reference:
+!   Wiki: https://en.wikipedia.org/wiki/Poisson_distribution#Generating_Poisson-distributed_random_variables
+!         https://www.johndcook.com/blog/2010/06/14/generating-poisson-random-values/
+! 
+!
+!---------
+! algorithm - Knuth_Junhao method
+!init:
+!        Let λLeft ← λ, k ← 0 and p ← 1.
+!    do:
+!        k ← k + 1.
+!        Generate uniform random number u in (0,1) and let p ← p × u.
+!        while p < 1 and λLeft > 0:
+!            if λLeft > STEP:
+!                p ← p × eSTEP
+!                λLeft ← λLeft − STEP
+!            else:
+!                p ← p × eλLeft
+!                λLeft ← 0
+!    while p > 1.
+!    return k − 1.
+!
+!---------
+! algorithm - Knuth method
+!
+!   init:
+!           Let L ← exp(−λ), k ← 0 and p ← 1.
+!      do:
+!           k ← k + 1.
+!           Generate uniform random number u in [0,1] and let p ← p × u.
+!      while p > L.
+!      return k − 1.
+!
+! Author: Yi-Hsuan Chen
+!----------
+
+  !--- input/output arguments
+  integer, intent(in)  :: kx, nx, rx   ! dimension of input/output variables
+  real   , intent(in)  :: rr   (rx)
+  real   , intent(in)  :: ENTf (kx,nx)  ! Poisson parameter
+
+  integer, intent(out) :: ENTi(kx,nx)  ! a random integer number drawn from the Poisson distribution
+
+  !--- local variables
+  integer, parameter :: itermax = 500   ! maximum of iteration loop
+  real,    parameter :: step    = 70
+
+  real ::        &
+    LL,          &    ! L, lambda, p, and u in the equations in reference
+    lambda,      &
+    lambda_left, &
+    pp,          &
+    uu
+  integer ::     &
+    kk             ! k in the equations in reference
+
+  integer i,j,n,k
+
+  character*40 method
+!-------------------------------
+
+  !method = "Knuth"
+  method = "Knuth_Junhao"
+
+  !--- initialize 
+  ENTi = 0
+  j = 1
+
+!--- loop over each element
+do n=1,nx
+do k=1,kx
+
+!======================================
+if (method == "Knuth_Junhao") then
+!======================================
+
+  !--- initialize values
+  lambda = ENTf(k,n)
+  ENTi(k,n) = int(lambda)
+  lambda_left = lambda
+  kk = 0
+  pp = 1.
+
+  !************
+  do i=1,itermax
+  !************
+
+    !--- restart the random number array
+    if (j > rx) then
+!print*,'restart the index in rr'
+      j=1
+    endif
+
+    kk = kk + 1
+    uu = rr(j)
+    pp = pp * uu
+
+!print*,'kk,uu,pp,lambda_left',kk,uu,pp,lambda_left
+
+    if (pp < 1 .and. lambda_left > 0.) then
+      if (lambda_left > step) then
+        pp = pp * exp(step)
+        lambda_left = lambda_left - step
+      else
+        pp = pp * exp(lambda_left)
+        lambda_left = 0.
+      endif
+    endif
+
+    if (pp < 1) then
+      ENTi(k,n) = kk - 1
+      j=j+1
+!print*,'yaya'
+      exit
+    endif
+!
+!
+    !--- advance to the next index in the random number array
+    j=j+1
+!
+  !************
+  enddo  ! end loop of i
+  !************
+
+!============
+end if   ! end if of method = "Knuth_Junhao"
+!============
+
+!!=============================
+!if (method == "Knuth") then
+!!=============================
+!!
+!  !--- initialize values
+!  lambda = ENTf(k,n)
+!  ENTi(k,n) = int(lambda)
+!  LL = exp(-1.*lambda)
+!  kk = 0
+!  pp = 1.
+!
+!  !************
+!  do i=1,itermax
+!  !************
+!    !--- recreate another random number array
+!    if (j > rx) then
+!      if (option_rng == 0) call random_number(rr)
+!
+!      if (option_rng == 1) then 
+!        perm = perm + 1
+!        if (perm > 32)  call error_mesg(' mass_flux_mod',  &
+!                                        ' perm cannot be largern than 32 in Poisson_knuth', &
+!                                         FATAL )
+!        call get_random_number_streams ( is, js, Time_next, tt(:,:,kx), streams, perm = perm)
+!        call getRandomNumbers (streams(1,1),rr)
+!      endif
+!
+!!print*,'call random_number again'
+!!print*,'rr,',rr
+!      j=1
+!    endif
+!
+!    kk = kk + 1
+!    uu = rr(j)
+!    pp = pp * uu
+!
+!!print*,'kk,uu,pp,LL',kk,uu,pp,LL
+!
+!    !--- get the random number
+!    if (pp < LL) then
+!      ENTi(k,n) = kk - 1
+!      j=j+1
+!!print*,'yaya'
+!      exit
+!    endif
+!
+!    !--- advance to the next index in the random number array
+!    j=j+1
+!
+!  !************
+!  enddo  ! end loop of i
+!  !************
+!
+!!================
+!endif  ! end if of method = "Knuth"
+!!================
+
+!print*,'i=',i
+  if (i >= itermax) then
+    ENTi(k,n) = int(lambda)
+!    print*,'qq,itermax,',lambda
+  endif
+
+enddo  ! end loop of k
+enddo  ! end loop of n
+
+!print*,'ENTi',ENTi
+
+end subroutine Poisson_knuth
 
 end module mass_flux_mod
