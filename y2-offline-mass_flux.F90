@@ -141,7 +141,8 @@ real, public, parameter :: rh_flag111 = 0.8   ! a test simulation that put some 
 !character*20, public, parameter :: rh_flag111_layer = "column"
 character*20, public, parameter :: rh_flag111_layer = "lowest_atm"
 
-character*40, parameter :: filter_massflux = ""
+!character*40, parameter :: filter_massflux = ""
+character*40, parameter :: filter_massflux = "no_cond"
 !character*40, parameter :: filter_massflux = "if_moist_allmf_off"       ! if moist updraft is present, set ALL mass flux effect to zero
 !character*40, parameter :: filter_massflux = "if_moist_allmoist_off"   ! if moist updraft is present, exclude moist updraft contribution
 character*10 :: choose_return = "u_v_t_q"
@@ -182,9 +183,6 @@ contains
 
 !###########################################
 ! subroutine mass_flux
-!
-! To-do (as of 06/21/2020)
-!   1. Use ice-liquid water potential temperature, instead of virtual temperature
 !
 ! Purpose:
 !   (1) Compute updraft properties based on the grid-scale input variables, such as uu,vv,tt,qq, etc.
@@ -10430,6 +10428,7 @@ program test111
 
   ql = 0.
   qi = 0.
+  qq = qq*2.
 
 ! case 1, qc present, OK
 !  qt = 0.00734462
