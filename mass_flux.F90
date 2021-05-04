@@ -586,12 +586,12 @@ end subroutine save_massflux_tendencies
 !                              uu, vv, tt, qq,                   &
 !                              udt, vdt, tdt, qdt )
 
-subroutine mass_flux_driver ( is, ie, js, je, dt, Time_next,           &
+subroutine mass_flux_driver ( is, ie, js, je, dt, Time_next,                    &
                               do_mass_flux_diagnostic, do_EDMF_in_mass_flux,    &
-                              p_half, p_full, z_half, z_full,          &
-                              u_star, b_star, q_star, z_pbl,           &
-                              uu_in, vv_in, tt_in, qq_in,              &
-                              udt, vdt, tdt, qdt, &
+                              p_half, p_full, z_half, z_full,                   &
+                              u_star, b_star, q_star, z_pbl,                    &
+                              uu_in, vv_in, tt_in, qq_in, ql_in, qi_in,         &
+                              udt, vdt, tdt, qdt, qldt, qidt,                   &
                               diff_t, diff_m, diff_t_to_vdiff, diff_m_to_vdiff )
 
 !---------------------------------------------------------------------
@@ -605,12 +605,14 @@ subroutine mass_flux_driver ( is, ie, js, je, dt, Time_next,           &
   logical, intent(in)                   :: do_mass_flux_diagnostic
   real,    intent(in), dimension(:,:,:) :: p_full, z_full
   real,    intent(in), dimension(:,:,:) :: p_half, z_half
-  real,    intent(in), dimension(:,:,:) :: uu_in, vv_in, tt_in, qq_in
+  real,    intent(in), dimension(:,:,:) :: uu_in, vv_in, tt_in, qq_in, ql_in, qi_in
   real,    intent(in), dimension(:,:)   :: z_pbl, u_star, b_star, q_star
 
   !real,    intent(in), optional, dimension(:,:,:) :: diff_t, diff_m
   real,    intent(in)   , optional, dimension(:,:,:) :: diff_t, diff_m
   real,    intent(out)  , optional, dimension(:,:,:) :: diff_t_to_vdiff, diff_m_to_vdiff
+
+  real,    intent(in), dimension(:,:,:) :: qldt, qidt
 
 !---------------------------------------------------------------------
 ! Arguments (Intent out)
@@ -631,7 +633,7 @@ subroutine mass_flux_driver ( is, ie, js, je, dt, Time_next,           &
 !---------------------------------------------------------------------
 
   real   , dimension(size(tt_in,1),size(tt_in,2),size(tt_in,3))    :: &
-           uu, vv, tt, qq,                                   &                ! state variables used in the mass flux program
+           uu, vv, tt, qq, ql, qi,                                   &                ! state variables used in the mass flux program
            udt_mf, vdt_mf, tdt_mf, qdt_mf, thvdt_mf, thlidt_mf, qtdt_mf       ! tendencies terms
   
   real   , dimension(size(tt_in,1),size(tt_in,2),size(tt_in,3)+1)  ::   &
@@ -650,12 +652,16 @@ subroutine mass_flux_driver ( is, ie, js, je, dt, Time_next,           &
     vv(:,:,:) = vv_in(:,:,:)
     tt(:,:,:) = tt_in(:,:,:)
     qq(:,:,:) = qq_in(:,:,:)
+    ql(:,:,:) = ql_in(:,:,:)
+    qi(:,:,:) = qi_in(:,:,:)
 
   else   ! use updated u,v,t,q
-    uu(:,:,:) = uu_in(:,:,:) + udt(:,:,:)*dt
-    vv(:,:,:) = vv_in(:,:,:) + vdt(:,:,:)*dt
-    tt(:,:,:) = tt_in(:,:,:) + tdt(:,:,:)*dt
-    qq(:,:,:) = qq_in(:,:,:) + qdt(:,:,:)*dt
+    uu(:,:,:) = uu_in(:,:,:) + udt (:,:,:)*dt
+    vv(:,:,:) = vv_in(:,:,:) + vdt (:,:,:)*dt
+    tt(:,:,:) = tt_in(:,:,:) + tdt (:,:,:)*dt
+    qq(:,:,:) = qq_in(:,:,:) + qdt (:,:,:)*dt
+    ql(:,:,:) = ql_in(:,:,:) + qldt(:,:,:)*dt
+    qi(:,:,:) = qi_in(:,:,:) + qidt(:,:,:)*dt
   endif
 
   !--- initialize diff_t_to_vdiff and diff_m_to_vdiff
@@ -685,7 +691,7 @@ subroutine mass_flux_driver ( is, ie, js, je, dt, Time_next,           &
   call mass_flux ( is, ie, js, je, dt, Time_next,                        &
                    p_half, p_full, z_half, z_full,                       & 
                    u_star, b_star, q_star, z_pbl,                        &
-                   uu, vv, tt, qq,                                       &
+                   uu, vv, tt, qq, ql, qi,                               &
                    is_mass_flux,                                         &
                    sum_up_a, sum_up_aw, sum_up_awu, sum_up_awv,          &
                    sum_up_awthv, sum_up_awthli, sum_up_awqt, avg_up_w, sum_up_massflux, &
