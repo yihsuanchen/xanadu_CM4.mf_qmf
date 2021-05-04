@@ -237,7 +237,7 @@ contains
 subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
                        p_half, p_full, z_half, z_full,                       & 
                        u_star, b_star, q_star, z_pbl,                        &
-                       uu, vv, tt, qq,                                       &
+                       uu, vv, tt, qq, ql, qi,                               &
                        is_mass_flux,                                         &
                        sum_up_a, sum_up_aw, sum_up_awu, sum_up_awv,          &
                        sum_up_awthv, sum_up_awthli, sum_up_awqt, avg_up_w, sum_up_massflux, &
@@ -257,6 +257,8 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
 !    vv          -  meridional wind         (m/s)   , dimension (nlon, nlat, nlay)
 !    tt          -  temperature             (K)     , dimension (nlon, nlat, nlay)
 !    qq          -  specific humidity       (kg/kg) , dimension (nlon, nlat, nlay)  ,see note 1 below
+!    ql          -  cloud liquid specific humidity       (kg/kg) , dimension (nlon, nlat, nlay) 
+!    qi          -  cloud ice specific humidity       (kg/kg) , dimension (nlon, nlat, nlay) 
 !    z_pbl       -  boundary layer depth    (m)     , dimension (nlon, nlat)        ,see note 2 below
 !    u_star      -  friction velocity       (m/s)   , dimension (nlon, nlat)        ,see note 2 below
 !    b_star      -  buoyancy scale          (m/s^2) , dimension (nlon, nlat)        ,see note 2 below
@@ -294,7 +296,7 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
   type(time_type), intent(in)           :: Time_next             
   real,    intent(in), dimension(:,:,:) :: p_full, z_full  
   real,    intent(in), dimension(:,:,:) :: p_half, z_half  
-  real,    intent(in), dimension(:,:,:) :: uu, vv, tt, qq  
+  real,    intent(in), dimension(:,:,:) :: uu, vv, tt, qq, ql, qi  
   real,    intent(in), dimension(:,:)   :: z_pbl, u_star, b_star, q_star
 
   real,    intent(in), optional, dimension(:,:,:) :: diff_t, diff_m
@@ -491,11 +493,13 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
   tv (:,:,:)=tt(:,:,:)*(qq(:,:,:)*d608+1.0)
   thv(:,:,:)=tv(:,:,:)*ape(:,:,:)  
 
-  thli(:,:,:)=th(:,:,:)   ! no cloud liquid/ice water from input, so thli equals to th
+  !thli(:,:,:)=th(:,:,:)   ! no cloud liquid/ice water from input, so thli equals to th
   !full expression of thli, thli(:,:,:)=th(:,:,:) - (hlv*qc(:,:,:)+hlf*qi(:,:,:)) /cp_air * ape(:,:,:)
+  thli(:,:,:) = th(:,:,:) - (hlv*ql(:,:,:)+hlf*qi(:,:,:)) /cp_air * ape(:,:,:)
 
 !--- set total water mixing ratio  
-  qt(:,:,:) = qq(:,:,:)  
+  !qt(:,:,:) = qq(:,:,:)  
+  qt(:,:,:) = qq(:,:,:)+ql(:,:,:)+qi(:,:,:)  
 
 !  !flag111 - set specific humidity at the lowest level
 !  if (rh_flag111.gt.0.) then
@@ -1013,7 +1017,7 @@ endif
          end if
        enddo
 
-     !--- do not set any filter
+     !--- no condensation is allowed in plumes, so do nothing
      else if (filter_massflux .eq. "no_cond") then
        n=1
 
@@ -10048,7 +10052,7 @@ program test111
   integer                   :: is, ie, js, je
   !real                      :: dt
   real,    dimension(ni,nj,nhalf) :: p_half, z_half, z_half_actual
-  real,    dimension(ni,nj,nfull) :: p_full, z_full, z_full_actual, uu, vv, tt, qq, thv
+  real,    dimension(ni,nj,nfull) :: p_full, z_full, z_full_actual, uu, vv, tt, qq, ql, qi, thv
   real,    dimension(ni,nj,nfull) :: diff_t, diff_m
   real,    dimension(ni,nj,nfull) :: udt_mf, vdt_mf, tdt_mf, qdt_mf, thvdt_mf, qtdt_mf, thlidt_mf
   !real,    dimension(ni,nj)   :: cov_w_thv, cov_w_qt
@@ -10085,7 +10089,6 @@ program test111
       p,               &   ! pressure                                                   , units: Pa
       water_frac,      &    ! cloud liquid water fraction                                , units: fraction
       thv1,             &   ! virtual potential temperature     , units: K
-      ql, qi, &
       qc                   ! cloud water (liq+ice) mixing ratio, units: kg/kg
 
   !data aa/5.,1.,1./
@@ -10425,6 +10428,9 @@ program test111
 ! case shared
   water_frac = 1
 
+  ql = 0.
+  qi = 0.
+
 ! case 1, qc present, OK
 !  qt = 0.00734462
 !  thli = 279.94
@@ -10490,7 +10496,7 @@ program test111
   call mass_flux ( is, ie, js, je, dt, Time_next,                        &
                    p_half, p_full, z_half, z_full,                       &
                    u_star, b_star, q_star, z_pbl,                        &
-                   uu, vv, tt, qq,                                       &
+                   uu, vv, tt, qq, ql, qi,                               &
                    is_mass_flux,                                         &
                    sum_up_a, sum_up_aw, sum_up_awu, sum_up_awv,          &
                    sum_up_awthv, sum_up_awthli, sum_up_awqt, avg_up_w, sum_up_massflux, &
