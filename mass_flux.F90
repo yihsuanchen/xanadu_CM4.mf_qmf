@@ -201,8 +201,11 @@ integer :: option_rng = 0  ! in Poisson_knuth, 0 - using Fortran intrisic random
 logical :: use_tau_mf = .true.            ! .true. use current u,v,t,q in the mass_flux program
                                           ! else   use updated u,v,t,q, i.e. u,v,t,q plus the tendencies times dt
 
-logical :: do_env_qt2q_thli2th = .false.  ! .true.  : assume no grid-scale cloud water, so thli=th, qt=q
-                                          ! .false. : calculate thli and qt using correct form
+logical :: do_env_qt2q_thli2th = .true.   ! .true.  : mix enviroment theta and q_v, insteand of theta_li and qt 
+                                          !           set .true. here because dry MF does not consider condensation. 
+                                          !           Also, there is not unique solution to convert theta_li and qt tendencies 
+                                          !           back to theta and qv, because qc changes are unknown. 
+                                          ! .false. : mix enviroment theta_li and q_v
 
 !--- temp tests 
 real :: rh_flag111 = 0.    ! a test simulation that put some moisture at the atmospheric lowest level
@@ -1039,6 +1042,12 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
   tv (:,:,:)=tt(:,:,:)*(qq(:,:,:)*d608+1.0)
   thv(:,:,:)=tv(:,:,:)*ape(:,:,:)  
 
+  !--- set environment qt and thli
+  !      for dry MF, I think do_env_qt2q_thli2th=.true. makes more sense.
+  !      Because no condensation is in dry MF, so the variables thli and qt are same as th and q.
+  !      If mixing enviroment thli and qt into the plume, we then get the tendency of thli and qt.
+  !      There is no unique solution to convert thli and qt tendencies back to th and q because qc is not determined.
+  !      For simplicity, mixing th and q from the enviroment makes more sense.
   if (do_env_qt2q_thli2th) then
     thli(:,:,:) = th(:,:,:)     ! assume no cloud water so thli=th, qt=qq 
     qt  (:,:,:) = qq(:,:,:)  
