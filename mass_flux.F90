@@ -201,6 +201,9 @@ integer :: option_rng = 0  ! in Poisson_knuth, 0 - using Fortran intrisic random
 logical :: use_tau_mf = .true.            ! .true. use current u,v,t,q in the mass_flux program
                                           ! else   use updated u,v,t,q, i.e. u,v,t,q plus the tendencies times dt
 
+logical :: do_env_qt2q_thli2th = .false.  ! .true.  : assume no grid-scale cloud water, so thli=th, qt=q
+                                          ! .false. : calculate thli and qt using correct form
+
 !--- temp tests 
 real :: rh_flag111 = 0.    ! a test simulation that put some moisture at the atmospheric lowest level
                            ! and see how much cloud water is condensed in the updraft.
@@ -219,7 +222,7 @@ namelist / mass_flux_nml / up_num, do_mf_micro, &
                            use_tau_mf,   &
                            option_stoch_entrain, ent_fixed, ent_mf_min, ent_mf_max, option_rng, &
                            option_MF_numerics, option_ED_numerics, option_surface_flux, do_include_surf_flux, do_ED_in_mass_flux, &      
-                           do_writeout_profile, do_printouts, do_stop_run, do_check_trc_rlzbility
+                           do_writeout_profile, do_printouts, do_stop_run, do_check_trc_rlzbility, do_env_qt2q_thli2th
          
 !---------------------------------------------------------------------
 !--- Diagnostic fields       
@@ -1036,13 +1039,18 @@ subroutine mass_flux ( is, ie, js, je, dt, Time_next,                        &
   tv (:,:,:)=tt(:,:,:)*(qq(:,:,:)*d608+1.0)
   thv(:,:,:)=tv(:,:,:)*ape(:,:,:)  
 
-  !thli(:,:,:)=th(:,:,:)   ! no cloud liquid/ice water from input, so thli equals to th
+  if (do_env_qt2q_thli2th) then
+    thli(:,:,:) = th(:,:,:)     ! assume no cloud water so thli=th, qt=qq 
+    qt  (:,:,:) = qq(:,:,:)  
+  else
+    thli(:,:,:) = th(:,:,:) - (hlv*ql(:,:,:)+hlf*qi(:,:,:)) /cp_air * ape(:,:,:)
+    qt  (:,:,:) = qq(:,:,:) + ql(:,:,:) + qi(:,:,:)  
+  endif
+
   !full expression of thli, thli(:,:,:)=th(:,:,:) - (hlv*qc(:,:,:)+hlf*qi(:,:,:)) /cp_air * ape(:,:,:)
-  thli(:,:,:) = th(:,:,:) - (hlv*ql(:,:,:)+hlf*qi(:,:,:)) /cp_air * ape(:,:,:)
 
 !--- set total water mixing ratio  
   !qt(:,:,:) = qq(:,:,:)  
-  qt(:,:,:) = qq(:,:,:)+ql(:,:,:)+qi(:,:,:)  
 
 !  !flag111 - set specific humidity at the lowest level
 !  if (rh_flag111.gt.0.) then
