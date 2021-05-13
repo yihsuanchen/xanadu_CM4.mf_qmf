@@ -5642,6 +5642,140 @@ unset occam_file
     </input>
   </experiment>
 
+  <experiment name="b10a-BOMEX-allmf_off_diag" inherit="b00-BOMEX-am4p0_rad">
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = T 
+        do_mass_flux_before_vdiff = T
+        do_mass_flux_after_vdiff  = F
+        do_stop_run = F
+     </namelist>
+      <namelist name="mass_flux_nml">
+ filter_massflux = "if_moist_allmf_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ option_stoch_entrain = "Poisson_knuth"
+ option_rng = 1
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b10b-BOMEX-qmf_off_diag" inherit="b00-BOMEX-am4p0_rad">
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = T
+        do_mass_flux_before_vdiff = T
+        do_mass_flux_after_vdiff  = F
+        do_stop_run = F
+     </namelist>
+      <namelist name="mass_flux_nml">
+ filter_massflux = "if_moist_allmoist_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ option_stoch_entrain = "Poisson_knuth"
+ option_rng = 1
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b10c-BOMEX-no_cond_diag" inherit="b00-BOMEX-am4p0_rad">
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = T
+        do_mass_flux_before_vdiff = T
+        do_mass_flux_after_vdiff  = F
+        do_stop_run = F
+     </namelist>
+      <namelist name="mass_flux_nml">
+ filter_massflux = "no_cond"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ option_stoch_entrain = "Poisson_knuth"
+ option_rng = 1
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b20-BOMEX-am4p0" inherit="BOMEX_$(AWG_EXPERIMENT)">
+  </experiment>
+
+  <experiment name="b21-BOMEX-allmf_off" inherit="BOMEX_$(AWG_EXPERIMENT)">
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = F
+        do_mass_flux_before_vdiff = T
+        do_mass_flux_after_vdiff  = F
+        do_stop_run = F
+     </namelist>
+      <namelist name="mass_flux_nml">
+ filter_massflux = "if_moist_allmf_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ option_stoch_entrain = "Poisson_knuth"
+ option_rng = 1
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b22-BOMEX-qmf_off" inherit="BOMEX_$(AWG_EXPERIMENT)">
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = F
+        do_mass_flux_before_vdiff = T
+        do_mass_flux_after_vdiff  = F
+        do_stop_run = F
+     </namelist>
+      <namelist name="mass_flux_nml">
+ filter_massflux = "if_moist_allmoist_off"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ option_stoch_entrain = "Poisson_knuth"
+ option_rng = 1
+      </namelist>
+    </input>
+  </experiment>
+
+  <experiment name="b23-BOMEX-no_cond" inherit="BOMEX_$(AWG_EXPERIMENT)">
+    <input>
+      <namelist name="physics_driver_nml">
+        do_mass_flux_diagnostic   = F
+        do_mass_flux_before_vdiff = T
+        do_mass_flux_after_vdiff  = F
+        do_stop_run = F
+     </namelist>
+      <namelist name="mass_flux_nml">
+ filter_massflux = "no_cond"
+ DO_INCLUDE_SURF_FLUX    = F,
+ DO_ED_IN_MASS_FLUX      = F,
+ OPTION_ED_NUMERICS      = none
+ OPTION_MF_NUMERICS      = explicit
+ DO_WRITEOUT_PROFILE     = F
+ DO_CHECK_TRC_RLZBILITY  = T
+ option_stoch_entrain = "Poisson_knuth"
+ option_rng = 1
+      </namelist>
+    </input>
+  </experiment>
 
 
 </experimentSuite>
