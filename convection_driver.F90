@@ -2591,21 +2591,21 @@ integer, dimension(:,:), intent(in), optional :: kbot
 !           Input_mp%tin(:,:,:) = Input_mp%tin(:,:,:) + delta_temp(:,:,:)
 
   !if (is.eq.1 .and. js.eq.1) then
-  if (Input_mp%bstar(i,j).gt.0.1190E-01 .and. Input_mp%bstar(i,j).lt.0.1200E-01) then
-    write(6,*) 'bstar',Input_mp%bstar(i,j)
-    write(6,*) 'ustar',Input_mp%ustar(i,j)
-    write(6,*) 'qstar',Input_mp%qstar(i,j)
-        write(6,*) '-------------- i,j,',i,j
-        write(6,3002) 'da11ta tdt_conv/'    ,Tend_mp%ttnd_conv(i,j,:)
-        write(6,3002) 'da11ta qdt_conv/'    ,Tend_mp%qtnd_conv(i,j,:)
-        write(6,3001) 'da11ta tin/'    ,Input_mp%tin(i,j,:)
-        write(6,3002) 'da11ta qin/'    ,Input_mp%qin(i,j,:)
-        write(6,3001) 'da11ta pfull/'  ,Input_mp%pfull(i,j,:)
-        write(6,3001) 'da11ta zfull/'  ,Input_mp%zfull(i,j,:)
-        write(6,3001) 'da11ta tin_orig/'    ,tin_orig(i,j,:)
-        write(6,3002) 'da11ta delta_temp/'    ,delta_temp(i,j,:)
-       write(6,*) '-------------- i,j,',i,j
-  endif
+!  if (Input_mp%bstar(i,j).gt.0.1190E-01 .and. Input_mp%bstar(i,j).lt.0.1200E-01) then
+!    write(6,*) 'bstar',Input_mp%bstar(i,j)
+!    write(6,*) 'ustar',Input_mp%ustar(i,j)
+!    write(6,*) 'qstar',Input_mp%qstar(i,j)
+!        write(6,*) '-------------- i,j,',i,j
+!        write(6,3002) 'da11ta tdt_conv/'    ,Tend_mp%ttnd_conv(i,j,:)
+!        write(6,3002) 'da11ta qdt_conv/'    ,Tend_mp%qtnd_conv(i,j,:)
+!        write(6,3001) 'da11ta tin/'    ,Input_mp%tin(i,j,:)
+!        write(6,3002) 'da11ta qin/'    ,Input_mp%qin(i,j,:)
+!        write(6,3001) 'da11ta pfull/'  ,Input_mp%pfull(i,j,:)
+!        write(6,3001) 'da11ta zfull/'  ,Input_mp%zfull(i,j,:)
+!        write(6,3001) 'da11ta tin_orig/'    ,tin_orig(i,j,:)
+!        write(6,3002) 'da11ta delta_temp/'    ,delta_temp(i,j,:)
+!       write(6,*) '-------------- i,j,',i,j
+!  endif
 
 3000 format (A25,2X,F8.2,',')
 3001 format (A25,2X,34(F10.3,2X,','))

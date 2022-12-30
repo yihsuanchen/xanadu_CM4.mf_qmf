@@ -78,6 +78,8 @@ files_input=(\
          "$srcdir/coupler/atm_land_ice_flux_exchange.F90"
           "$srcdir/coupler/coupler_main.F90"
           "$srcdir/atmos_drivers/coupled/atmos_model.F90"
+         "$codedir/donner_deep/fms_donner.F90"
+         "$codedir/radiation/driver/radiation_driver_diag.F90"
             )
          #"$codedir/convection_driver/convection_driver.F90"
          #"/ncrc/home2/Yi-hsuan.Chen/awg/xanadu/cm4p12_xanadu_am4p0_mf_qmf/src/FMS/sat_vapor_pres/sat_vapor_pres.F90"

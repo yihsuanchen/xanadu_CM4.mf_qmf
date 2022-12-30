@@ -37,8 +37,11 @@ xml_dir=`grep "xml_dir=" $setting_file | cut -d '=' -f 2`
 xml_name=`grep "xml_name=" $setting_file | cut -d '=' -f 2`
 xml_file="$xml_dir/$xml_name"
 
-PLATFORM="ncrc3.intel"     # platform used in fre* command
-TARGET="openmp"            # targer   used in fre* command
+PLATFORM=`grep "PLATFORM=" $setting_file | cut -d '=' -f 2`
+TARGET=`grep "TARGET=" $setting_file | cut -d '=' -f 2`
+
+#PLATFORM="ncrc3.intel"     # platform used in fre* command
+#TARGET="openmp"            # targer   used in fre* command
 
 ##################
 ##################

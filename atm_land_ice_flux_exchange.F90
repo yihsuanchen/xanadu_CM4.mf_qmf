@@ -1644,18 +1644,6 @@ contains
           ex_ref(i) = 1.0e-06
           if (ex_avail(i)) &
                ex_ref(i)   = ex_tr_surf(i,isphum) + (ex_tr_atm(i,isphum)-ex_tr_surf(i,isphum)) * ex_del_q(i)
-
-!<-- yihsuan
-          if (ex_b_star(i).gt.0.1190E-01 .and. ex_b_star(i).lt.0.1200E-01) then
-            write(6,*) '-----------------'
-            write(6,*) 'gg1_sfc_bl, i',i
-            write(6,*) 'gg1_sfc_bl, ex_b_star',ex_b_star(i)
-            write(6,*) 'gg1_sfc_bl, ex_u_star',ex_u_star(i)
-            write(6,*) 'gg1_sfc_bl, ex_q_star',ex_q_star(i)
-            write(6,*) '-----------------'
-          endif
-!<-- yihsuan
-
        enddo
     enddo
     call get_from_xgrid (Land_Ice_Atmos_Boundary%q_ref, 'ATM', ex_ref,   xmap_sfc)  ! cjg
@@ -2224,30 +2212,9 @@ contains
                 ex_flux_tr(i,tr)     =  ex_flux_tr(i,tr) + ex_dfdtr_atm(i,tr)*ex_f_tr_delt_n(i,tr)
                 ex_dfdtr_surf(i,tr)  =  ex_dfdtr_surf(i,tr) + ex_dfdtr_atm(i,tr)*ex_e_tr_n(i,tr)
              enddo
-          endif  ! end if of ex_avail(i)
-
-!--> yihsuan
-             !ex_flux_t (i)    =  ex_flux_t(i)        + ex_dhdt_atm(i) * ex_f_t_delt_n(i)
-                !ex_flux_tr(i,tr)     =  ex_flux_tr(i,tr) + ex_dfdtr_atm(i,tr)*ex_f_tr_delt_n(i,tr)
-  if (ex_flux_t(i).gt.13.0601 .and. ex_flux_t(i).lt.13.0602) then
-    write(6,*) '-----------------------------'
-    write(6,*) 'ex_avail(i)',ex_avail(i)
-    write(6,*) 'gg1_down, i,',i
-    write(6,*) 'gg1_down, ex_flux_t (i)',ex_flux_t (i)
-    write(6,*) 'gg1_down, ex_dhdt_atm(i) * ex_f_t_delt_n(i)',ex_dhdt_atm(i) * ex_f_t_delt_n(i)
-    write(6,*) 'gg1_down, previous ex_flux_t (i) ',ex_flux_t (i) - ex_dhdt_atm(i) * ex_f_t_delt_n(i)
-    tr = isphum
-    write(6,*) 'gg1_down, ex_flux_tr(i,tr)',ex_flux_tr(i,tr)
-    write(6,*) 'gg1_down, ex_dfdtr_atm(i,tr)*ex_f_tr_delt_n(i,tr)',ex_dfdtr_atm(i,tr)*ex_f_tr_delt_n(i,tr)
-    write(6,*) 'gg1_down, previous ex_flux_tr(i,tr)',ex_flux_tr(i,tr) - ex_dfdtr_atm(i,tr)*ex_f_tr_delt_n(i,tr)
-    write(6,*) '-----------------------------'
-  endif
-!--> yihsuan
-
+          endif
        enddo ! i = is, ie
     enddo !  l = 1, my_nblocks
-
-
     !-----------------------------------------------------------------------
     !---- output fields on the land grid -------
 
@@ -2756,34 +2723,6 @@ contains
        enddo
     enddo
 
-!i--> yihsuan
-             !ex_flux_tr(i,isphum)     = ex_flux_tr(i,isphum)     + ex_dt_t_surf(i) * ex_dedt_surf(i)
-    do l = 1, my_nblocks
-       is=block_start(l)
-       ie=block_end(l)
-do i = is, ie
-  !if(ex_avail(i)) then
-  !if (ex_flux_t(i).gt.13.06 .and. ex_flux_t(i).lt.13.07) then
-  if (ex_flux_t(i).gt.13.0601 .and. ex_flux_t(i).lt.13.0602) then
-  !if (ex_flux_t(i).gt.13. .and. ex_flux_t(i).lt.13.5) then
-    write(6,*) '------------------------------'
-    write(6,*) 'gg1_up, i,',i
-    write(6,*) 'ex_avail(i)',ex_avail(i)
-    write(6,*) 'gg1_up, ex_flux_t(i),',ex_flux_t(i)
-    write(6,*) 'gg1_up, ex_dt_t_ca(i)   * ex_dhdt_surf(i),',ex_dt_t_ca(i)   * ex_dhdt_surf(i)
-    write(6,*) 'gg1_up, previous ex_flux_t(i),',ex_flux_t(i)  - ex_dt_t_ca(i)   * ex_dhdt_surf(i)
-    write(6,*) 'gg1_up, ex_flux_tr(i,isphum),',ex_flux_tr(i,isphum)
-    write(6,*) 'gg1_up, ex_dt_t_surf(i) * ex_dedt_surf(i),',ex_dt_t_surf(i) * ex_dedt_surf(i)
-    write(6,*) 'gg1_up, previous ex_flux_tr(i,isphum) ',ex_flux_tr(i,isphum) - ex_dt_t_surf(i) * ex_dedt_surf(i)
-    write(6,*) '------------------------------'
-  end if
-  !end if
-enddo
-enddo
-!i--> yihsuan
-
-
-
     !-----------------------------------------------------------------------
     !---- get mean quantites on atmospheric grid ----
 
@@ -2883,19 +2822,6 @@ enddo
     !------- sensible heat flux -----------
     if ( id_t_flux > 0 .or. id_hfss > 0 .or. id_hfss_g > 0 ) then
        call get_from_xgrid (diag_atm, 'ATM', ex_flux_t, xmap_sfc)
-
-!<--- yihsuan
-is=10
-ie=2
-write(6,*) 'gg1_send, i,j, t_flux',is,ie,diag_atm(is,ie)
-
-do i=1,size(ex_flux_t)
-  if (ex_flux_t(i).gt.13.0601 .and. ex_flux_t(i).lt.13.0602) then
-    write(6,*) 'gg1_ex_flux_t, i,ex_flux_t(i)',i,ex_flux_t(i)
-  endif
-enddo
-!<--- yihsuan
-
        if ( id_t_flux > 0 ) used = send_data ( id_t_flux, diag_atm, Time )
        if ( id_hfss   > 0 ) used = send_data ( id_hfss, diag_atm, Time )
 #ifndef use_AM3_physics

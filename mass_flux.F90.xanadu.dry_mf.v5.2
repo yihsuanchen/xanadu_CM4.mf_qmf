@@ -4992,7 +4992,7 @@ call random_number(harvest)
 t=t*harvest
 if (t <= g) exit
 end do
-write(6,*) 'qq1, direct method, em',em
+!write(6,*) 'qq1, direct method, em',em
 
 else      !    Use rejection method.
 !write(6,*) 'qq1, rejection method, em',em
@@ -5012,12 +5012,12 @@ if (em >= 0.0) exit !Reject if in regime of zero probability.
 end do
 
 em=int(em)          ! The trick for integer-valued distributions.
-write(6,*) 'qq1, rejection method, em',em
+!write(6,*) 'qq1, rejection method, em',em
 
 !<-- yhc
 tt1=em+1.0_sp
 if (tt1.le.0.) then
-  write(6,*) 'ggg, poidev,1 em,sq,y,xm', em,sq,y,xm
+  !write(6,*) 'ggg, poidev,1 em,sq,y,xm', em,sq,y,xm
   !if (em.le.0.) em=int(1.)  ! yhc
   !write(6,*) 'ggg, poidev,2 em,sq,y,xm', em,sq,y,xm
   if (do_stop_run) call error_mesg(' mass_flux_mod',' poidev, em+1 is negative', FATAL )

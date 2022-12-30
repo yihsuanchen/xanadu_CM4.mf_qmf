@@ -533,6 +533,10 @@ program coupler_main
   integer :: ncores_per_node = 0
   logical :: debug_affinity = .false.
 
+!<--- yhc
+  logical :: do_check_column = .false.
+!---> yhc
+
   namelist /coupler_nml/ current_date, calendar, force_date_from_namelist,         &
                          months, days, hours, minutes, seconds, dt_cpld, dt_atmos, &
                          do_atmos, do_land, do_ice, do_ocean, do_flux,             &
@@ -542,6 +546,7 @@ program coupler_main
                          check_stocks, restart_interval, do_debug, do_chksum,      &
                          use_hyper_thread, ncores_per_node, debug_affinity,        &
                          concurrent_ice, slow_ice_with_ocean, do_endpoint_chksum,  &
+                         do_check_column, & !yhc
                          combined_ice_and_ocean
 
   integer :: initClock, mainClock, termClock
@@ -835,6 +840,9 @@ program coupler_main
 !$OMP&      NUM_THREADS(1) &
 !$OMP&      DEFAULT(NONE) &
 !$OMP&      PRIVATE(dsec) &
+!<--- yhc
+!$OMP&      PRIVATE(do_check_column) &
+!---> yhc
 !$OMP&      SHARED(atmos_nthreads, radiation_nthreads, nc, na, num_atmos_calls, atmos_npes, land_npes, ice_npes) &
 !$OMP&      SHARED(Time_atmos, Atm, Land, Ice, Land_ice_atmos_boundary, Atmos_land_boundary, Atmos_ice_boundary) &
 !$OMP&      SHARED(Ocean_ice_boundary) &
@@ -858,11 +866,11 @@ program coupler_main
           if (do_atmos) then
             call mpp_clock_begin(newClockl)
 
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_dyn' )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_dyn', do_check_column )
             call update_atmos_model_dynamics( Atm )
 
 !write( text,'(a)' ) 'after update_atmos_model_dynamics'
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm,  ' after_dyn')
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm,  ' after_dyn', do_check_column)
             call mpp_clock_end(newClockl)
           endif
           if (do_chksum) call atmos_ice_land_chksum('update_atmos_model_dynamics', (nc-1)*num_atmos_calls+na, &
@@ -872,9 +880,9 @@ program coupler_main
           !      ---- SERIAL atmosphere radiation ----
           if (.not.do_concurrent_radiation) then
             call mpp_clock_begin(newClockj)
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_rad' )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_rad', do_check_column )
             call update_atmos_model_radiation( Land_ice_atmos_boundary, Atm )
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_rad' )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_rad', do_check_column )
             call mpp_clock_end(newClockj)
           endif
           if (do_chksum) call atmos_ice_land_chksum('update_atmos_model_radiation(ser)', (nc-1)*num_atmos_calls+na, &
@@ -884,9 +892,11 @@ program coupler_main
           !      ---- atmosphere down ----
           if (do_atmos) then
             call mpp_clock_begin(newClockc)
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_dwn' )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_dwn', do_check_column )
+!write(6,*) 'ggg, begin update_atmos_model_down'
             call update_atmos_model_down( Land_ice_atmos_boundary, Atm )
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_dwn' )
+!write(6,*) 'ggg, end   update_atmos_model_down'
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_dwn', do_check_column )
             call mpp_clock_end(newClockc)
           endif
           if (do_chksum) call atmos_ice_land_chksum('update_atmos_down+', (nc-1)*num_atmos_calls+na, Atm, Land, Ice, &
@@ -894,11 +904,15 @@ program coupler_main
           if (do_debug)  call print_memuse_stats( 'update down')
 
           call mpp_clock_begin(newClockd)
+
+!write(6,*) 'ggg, begin flux_down_from_atmos'
           call flux_down_from_atmos( Time_atmos, Atm, Land, Ice, &
                                      Land_ice_atmos_boundary, &
                                      Atmos_land_boundary, &
                                      Atmos_ice_boundary )
+!write(6,*) 'ggg, end   flux_down_from_atmos'
           call mpp_clock_end(newClockd)
+
           if (do_chksum) call atmos_ice_land_chksum('flux_down_from_atmos+', (nc-1)*num_atmos_calls+na, Atm, Land, &
                  Ice, Land_ice_atmos_boundary, Atmos_ice_boundary, Atmos_land_boundary)
 
@@ -930,17 +944,23 @@ program coupler_main
           !      --------------------------------------------------------------
           !      ---- atmosphere up ----
           call mpp_clock_begin(newClockg)
+
           call flux_up_to_atmos( Time_atmos, Land, Ice, Land_ice_atmos_boundary, &
                                  Atmos_land_boundary, Atmos_ice_boundary )
+
           call mpp_clock_end(newClockg)
           if (do_chksum) call atmos_ice_land_chksum('flux_up2atmos+', (nc-1)*num_atmos_calls+na, Atm, Land, Ice, &
                  Land_ice_atmos_boundary, Atmos_ice_boundary, Atmos_land_boundary)
 
           call mpp_clock_begin(newClockh)
           if (do_atmos) &
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_up ' )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_up ', do_check_column )
+
+!write(6,*) 'ggg, begin update_atmos_model_up'
             call update_atmos_model_up( Land_ice_atmos_boundary, Atm)
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_up ' )
+!write(6,*) 'ggg, end   update_atmos_model_up'
+
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_up ', do_check_column )
           call mpp_clock_end(newClockh)
           if (do_chksum) call atmos_ice_land_chksum('update_atmos_up+', (nc-1)*num_atmos_calls+na, Atm, Land, Ice, &
                  Land_ice_atmos_boundary, Atmos_ice_boundary, Atmos_land_boundary)
@@ -986,9 +1006,9 @@ program coupler_main
 !$      call omp_set_num_threads(atmos_nthreads+(conc_nthreads-1)*radiation_nthreads)
 
         call mpp_clock_begin(newClockk)
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_sta' )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, 'before_sta', do_check_column )
         call update_atmos_model_state( Atm )
-!call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_sta' )
+call yhc_get_atmos_model_fields( Land_ice_atmos_boundary, Atm, ' after_sta', do_check_column )
         if (do_chksum) call atmos_ice_land_chksum('update_atmos_model_state+', (nc-1)*num_atmos_calls+na, Atm, Land, &
                   Ice,Land_ice_atmos_boundary, Atmos_ice_boundary, Atmos_land_boundary)
         if (do_debug)  call print_memuse_stats( 'update state')

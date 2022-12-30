@@ -12,6 +12,7 @@
 #------------------------------------------
 
 PLATFORM=ncrc4.intel19
+#PLAT__FORM=ncrc4.intel18
 TARGET=openmp
 
 #---------------------------
@@ -19,7 +20,8 @@ TARGET=openmp
 #---------------------------
 
 xml_dir=/ncrc/home2/Yi-hsuan.Chen/awg/xanadu/xml_xanadu_am4p0_mf_qmf
-xml_name=awg_xanadu_am4p0_mf_qmf.xml
+xml_00name=awg_xanadu_am4p0_mf_qmf.xml
+xml_name=awg_xanadu_am4p0_mf_qmf_restart_at_2000.xml
 
 #---------------------------
 # set model name, FMS_COMP_EXPNAME

@@ -2035,23 +2035,23 @@ type(MP_removal_type),    intent(inout) :: Removal_mp
 !yihsuan
         !Input_mp%tin = Physics_input_block%t
         !Input_mp%qin= Physics_input_block%q(:,:,:,1)
-  i=10
-  j=2
-  if (bstar(i,j).gt.0.1190E-01 .and. bstar(i,j).lt.0.1200E-01) then
-    write(6,*) 'bstar',bstar(i,j)
-    write(6,*) 'ustar',ustar(i,j)
-    write(6,*) 'qstar',qstar(i,j)
-    write(6,*) 'use_tau',use_tau
-    write(6,*) 'dt',dt
-        write(6,*) '-------------- i,j,',i,j
-        write(6,3001) 'da33ta tin/'    ,Input_mp%tin(i,j,:)
-        write(6,3002) 'da33ta qin/'    ,Input_mp%qin(i,j,:)
-        write(6,3001) 'da33ta block_t/'    ,Physics_input_block%t(i,j,:)
-        write(6,3002) 'da33ta block_q/'    ,Physics_input_block%q(i,j,:,1)
-        write(6,3002) 'da33ta tdt/', Physics_tendency_block%t_dt(i,j,:)
-        write(6,3002) 'da33ta qdt/', Physics_tendency_block%q_dt(i,j,:,1)
-       write(6,*) '-------------- i,j,',i,j
-  endif
+!  i=10
+!  j=2
+!  if (bstar(i,j).gt.0.1190E-01 .and. bstar(i,j).lt.0.1200E-01) then
+!    write(6,*) 'bstar',bstar(i,j)
+!    write(6,*) 'ustar',ustar(i,j)
+!    write(6,*) 'qstar',qstar(i,j)
+!    write(6,*) 'use_tau',use_tau
+!    write(6,*) 'dt',dt
+!        write(6,*) '-------------- i,j,',i,j
+!        write(6,3001) 'da33ta tin/'    ,Input_mp%tin(i,j,:)
+!        write(6,3002) 'da33ta qin/'    ,Input_mp%qin(i,j,:)
+!        write(6,3001) 'da33ta block_t/'    ,Physics_input_block%t(i,j,:)
+!        write(6,3002) 'da33ta block_q/'    ,Physics_input_block%q(i,j,:,1)
+!        write(6,3002) 'da33ta tdt/', Physics_tendency_block%t_dt(i,j,:)
+!        write(6,3002) 'da33ta qdt/', Physics_tendency_block%q_dt(i,j,:,1)
+!       write(6,*) '-------------- i,j,',i,j
+!  endif
 
 3000 format (A25,2X,F8.2,',')
 3001 format (A25,2X,34(F10.3,2X,','))

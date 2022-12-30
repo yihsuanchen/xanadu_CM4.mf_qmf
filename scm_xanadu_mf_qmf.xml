@@ -5718,6 +5718,7 @@ unset occam_file
         do_mass_flux_before_vdiff = T
         do_mass_flux_after_vdiff  = F
         do_stop_run = F
+        DO_RADIATION    = F
      </namelist>
       <namelist name="mass_flux_nml">
  filter_massflux = "if_moist_allmf_off"
@@ -5740,6 +5741,7 @@ unset occam_file
         do_mass_flux_before_vdiff = T
         do_mass_flux_after_vdiff  = F
         do_stop_run = F
+        DO_RADIATION    = F
      </namelist>
       <namelist name="mass_flux_nml">
  filter_massflux = "if_moist_allmoist_off"
@@ -5762,6 +5764,7 @@ unset occam_file
         do_mass_flux_before_vdiff = T
         do_mass_flux_after_vdiff  = F
         do_stop_run = F
+        DO_RADIATION    = F
      </namelist>
       <namelist name="mass_flux_nml">
  filter_massflux = "no_cond"
