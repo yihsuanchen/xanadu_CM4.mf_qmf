@@ -117,12 +117,14 @@ properties below.
   <property name="ANA_AMIP_LEN"   value="2yr"/>
 -->
 
+<!--
   <property name="EXP_AMIP_START" value="1979"/>
   <property name="EXP_AMIP_END"   value="1984"/>
   <property name="EXP_AMIP_LEN"   value="6"/>
   <property name="ANA_AMIP_START" value="1980"/>
   <property name="ANA_AMIP_END"   value="1984"/>
   <property name="ANA_AMIP_LEN"   value="5yr"/>
+-->
 
 <!--
   <property name="EXP_AMIP_START" value="1979"/>
@@ -142,14 +144,12 @@ properties below.
   <property name="ANA_AMIP_LEN"   value="24yr"/>
 -->
   
-<!--
   <property name="EXP_AMIP_START" value="1979"/>
   <property name="EXP_AMIP_END"   value="2014"/>
   <property name="EXP_AMIP_LEN"   value="36"/>
   <property name="ANA_AMIP_START" value="1980"/>
   <property name="ANA_AMIP_END"   value="2014"/>
   <property name="ANA_AMIP_LEN"   value="35yr"/>
--->
 
 
 <!-- 2-year AMIP run 
